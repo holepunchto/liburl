@@ -9,7 +9,6 @@ extern "C" {
 #include <utf.h>
 
 typedef struct url_range_s url_range_t;
-
 typedef struct url_components_s url_components_t;
 
 struct url_range_s {
