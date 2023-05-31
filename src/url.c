@@ -66,12 +66,7 @@ url_range_compare_literal (const utf8_t *a_input, const url_range_t *a, const ch
   return url_range_compare(a_input, a, (const utf8_t *) literal, &(url_range_t){0, strlen(literal)});
 }
 
-int
-url_get_scheme (const utf8_t *input, const url_components_t *components, const utf8_t **result, size_t *len) {
-  return url_range_slice(input, &components->scheme, result, len);
-}
-
-bool
+static inline bool
 url_is_special (const utf8_t *input, const url_components_t *components) {
   const utf8_t *scheme;
   size_t len;
@@ -309,4 +304,19 @@ url_parse (const utf8_t *input, size_t len, const utf8_t *base, const url_compon
   }
 
   return 0;
+}
+
+int
+url_get_scheme (const utf8_t *input, const url_components_t *components, const utf8_t **result, size_t *len) {
+  return url_range_slice(input, &components->scheme, result, len);
+}
+
+int
+url_get_host (const utf8_t *input, const url_components_t *components, const utf8_t **result, size_t *len) {
+  return url_range_slice(input, &components->host, result, len);
+}
+
+int
+url_get_path (const utf8_t *input, const url_components_t *components, const utf8_t **result, size_t *len) {
+  return url_range_slice(input, &components->path, result, len);
 }

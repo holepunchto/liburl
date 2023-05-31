@@ -26,13 +26,16 @@ struct url_components_s {
 static const url_range_t url_range_empty = {0, 0};
 
 int
-url_get_scheme (const utf8_t *input, const url_components_t *components, const utf8_t **result, size_t *len);
-
-bool
-url_is_special (const utf8_t *input, const url_components_t *components);
+url_parse (const utf8_t *input, size_t len, const utf8_t *base, const url_components_t *components, url_components_t *result);
 
 int
-url_parse (const utf8_t *input, size_t len, const utf8_t *base, const url_components_t *components, url_components_t *result);
+url_get_scheme (const utf8_t *input, const url_components_t *components, const utf8_t **result, size_t *len);
+
+int
+url_get_host (const utf8_t *input, const url_components_t *components, const utf8_t **result, size_t *len);
+
+int
+url_get_path (const utf8_t *input, const url_components_t *components, const utf8_t **result, size_t *len);
 
 #ifdef __cplusplus
 }
