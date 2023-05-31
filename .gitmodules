@@ -1,0 +1,3 @@
+[submodule "vendor/libutf"]
+	path = vendor/libutf
+	url = ../../holepunchto/libutf.git
