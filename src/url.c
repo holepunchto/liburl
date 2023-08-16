@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -18,8 +19,13 @@ struct url_s {
   int flags;
 
   utf8_t *scheme;
+  utf8_t *username;
+  utf8_t *password;
   utf8_t *host;
+  int32_t port; // Either -1 or a 16 bit usigned integer
   utf8_t *path;
+  utf8_t *query;
+  utf8_t *fragment;
 };
 
 struct url_range_s {
@@ -50,6 +56,8 @@ typedef enum {
   url_state_query,
   url_state_fragment,
 } url_state_t;
+
+static utf8_t url_string_empty[1] = {0};
 
 static inline int
 url_string_compare (const utf8_t *a, const utf8_t *b) {
@@ -150,9 +158,13 @@ url_is_special (const url_t *url) {
 
 int
 url_destroy (url_t *url) {
-  if (url->scheme) free(url->scheme);
-  if (url->host) free(url->host);
-  if (url->path) free(url->path);
+  if (url->scheme != url_string_empty) free(url->scheme);
+  if (url->username != url_string_empty) free(url->username);
+  if (url->password != url_string_empty) free(url->password);
+  if (url->host != url_string_empty) free(url->host);
+  if (url->path != url_string_empty) free(url->path);
+  if (url->query && url->query != url_string_empty) free(url->query);
+  if (url->fragment && url->query != url_string_empty) free(url->fragment);
 
   free(url);
 
@@ -166,9 +178,14 @@ url_parse (const utf8_t *input, size_t len, const url_t *base, url_t **result) {
   url_t *url = malloc(sizeof(url_t));
 
   url->flags = 0;
-  url->scheme = NULL;
+  url->scheme = url_string_empty;
+  url->username = url_string_empty;
+  url->password = url_string_empty;
   url->host = NULL;
-  url->path = NULL;
+  url->port = -1;
+  url->path = url_string_empty;
+  url->query = NULL;
+  url->fragment = NULL;
 
   url_state_t state = url_state_scheme_start;
 
@@ -224,41 +241,151 @@ url_parse (const utf8_t *input, size_t len, const url_t *base, url_t **result) {
 
     // https://url.spec.whatwg.org/#no-scheme-state
     case url_state_no_scheme:
-      if (base == NULL) return -1;
+      if (base == NULL) goto err;
 
       if (base->flags & url_has_opaque_path) {
-        if (c != 0x23) return -1;
+        if (c != 0x23) goto err;
 
         url->scheme = url_string_copy(base->scheme, -1);
+        url->path = url_string_copy(base->path, -1);
+        url->query = url_string_copy(base->query, -1);
+        url->fragment = url_string_empty;
+
+        state = url_state_fragment;
+      } else if (url_string_compare_literal(base->scheme, "file") != 0) {
+        state = url_state_relative;
+        pointer--;
+      } else {
+        state = url_state_file;
+        pointer--;
       }
       break;
 
     // https://url.spec.whatwg.org/#special-relative-or-authority-state
     case url_state_special_relative_or_authority:
+      if (c == 0x2f && pointer + 1 < len && input[pointer + 1] == 0x2f) {
+        state = url_state_special_authority_ignore_slashes;
+        pointer++;
+      } else {
+        state = url_state_relative;
+        pointer--;
+      }
       break;
 
     // https://url.spec.whatwg.org/#path-or-authority-state
     case url_state_path_or_authority:
+      if (c == 0x2f) {
+        state = url_state_authority;
+      } else {
+        state = url_state_path;
+        pointer--;
+      }
       break;
 
     // https://url.spec.whatwg.org/#relative-state
     case url_state_relative:
+      assert(url_string_compare_literal(base->scheme, "file") != 0);
+
+      url->scheme = url_string_copy(base->scheme, -1);
+
+      if (c == 0x2f) {
+        state = url_state_relative_slash;
+      } else if (url_is_special(url) && c == 0x5c) {
+        state = url_state_relative_slash;
+      } else {
+        url->username = url_string_copy(base->username, -1);
+        url->password = url_string_copy(base->password, -1);
+        url->host = url_string_copy(base->host, -1);
+        url->port = base->port;
+        url->path = url_string_copy(base->path, -1);
+
+        if (c == 0x3f) {
+          url->query = url_string_empty;
+
+          state = url_state_query;
+        } else if (c == 0x23) {
+          url->fragment = url_string_empty;
+
+          state = url_state_fragment;
+        } else if (c != -1) {
+          // TODO: Shorten path
+
+          state = url_state_path;
+          pointer--;
+        } else {
+          url->query = url_string_copy(base->query, -1);
+        }
+      }
       break;
 
     // https://url.spec.whatwg.org/#relative-slash-state
     case url_state_relative_slash:
+      if (url_is_special(url) && (c == 0x2f || c == 0x5c)) {
+        state = url_state_special_authority_ignore_slashes;
+      } else if (c == 0x2f) {
+        state = url_state_authority;
+      } else {
+        url->username = url_string_copy(base->username, -1);
+        url->password = url_string_copy(base->password, -1);
+        url->host = url_string_copy(base->host, -1);
+        url->port = base->port;
+
+        state = url_state_path;
+        pointer--;
+      }
       break;
 
     // https://url.spec.whatwg.org/#special-authority-slashes-state
     case url_state_special_authority_slashes:
+      if (c == 0x2f && pointer + 1 < len && input[pointer + 1] == 0x2f) {
+        state = url_state_special_authority_ignore_slashes;
+        pointer++;
+      } else {
+        state = url_state_special_authority_ignore_slashes;
+        pointer--;
+      }
       break;
 
     // https://url.spec.whatwg.org/#special-authority-ignore-slashes-state
     case url_state_special_authority_ignore_slashes:
+      if (c != 0x2f || c != 0x5c) {
+        state = url_state_authority;
+        pointer--;
+      }
       break;
 
     // https://url.spec.whatwg.org/#authority-state
     case url_state_authority:
+      if (c == 0x40) {
+        at_sign_seen = true;
+
+        for (size_t i = buffer.start; i < buffer.end; i++) {
+          utf8_t c = input[i];
+
+          if (c == 0x3a && !password_token_seen) {
+            password_token_seen = true;
+            continue;
+          }
+        }
+
+        if (password_token_seen) {
+          url->password = url_range_copy(input, buffer);
+        } else {
+          url->username = url_range_copy(input, buffer);
+        }
+
+        buffer.start = buffer.end = pointer;
+      } else if (
+        (c == -1 || c == 0x2f || c == 0x3f || c == 0x23) ||
+        (url_is_special(url) && c == 0x5c)
+      ) {
+        if (at_sign_seen && buffer.start == buffer.end) goto err;
+
+        pointer = buffer.end = buffer.start;
+        state = url_state_host;
+      } else {
+        buffer.end++;
+      }
       break;
 
     // https://url.spec.whatwg.org/#host-state
