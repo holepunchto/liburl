@@ -1,11 +1,31 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <utf.h>
 
 #include "../include/url.h"
 #include "infra.h"
+
+typedef struct url_range_s url_range_t;
+
+enum {
+  url_has_opaque_path = 0x1
+};
+
+struct url_s {
+  int flags;
+
+  utf8_t *scheme;
+  utf8_t *host;
+  utf8_t *path;
+};
+
+struct url_range_s {
+  size_t start;
+  size_t end;
+};
 
 typedef enum {
   url_state_scheme_start,
@@ -32,22 +52,45 @@ typedef enum {
 } url_state_t;
 
 static inline int
-url_range_slice (const utf8_t *input, const url_range_t *range, const utf8_t **result, size_t *len) {
+url_string_compare (const utf8_t *a, const utf8_t *b) {
+  return strcmp((const char *) a, (const char *) b);
+}
+
+static inline int
+url_string_compare_literal (const utf8_t *input, const char *literal) {
+  return strcmp((const char *) input, literal);
+}
+
+static inline utf8_t *
+url_string_copy (const utf8_t *input, size_t len) {
+  if (len == (size_t) -1) len = strlen((const char *) input);
+
+  utf8_t *output = malloc(len + 1 /* NULL */);
+
+  memcpy(output, input, len);
+
+  output[len] = 0;
+
+  return output;
+}
+
+static inline int
+url_range_slice (const utf8_t *input, url_range_t range, const utf8_t **result, size_t *len) {
   if (result == NULL || len == NULL) return -1;
 
-  if (range->start >= range->end) {
+  if (range.start >= range.end) {
     *result = NULL;
     *len = 0;
   } else {
-    *result = &input[range->start];
-    *len = range->end - range->start;
+    *result = &input[range.start];
+    *len = range.end - range.start;
   }
 
   return 0;
 }
 
 static inline int
-url_range_compare (const utf8_t *a_input, const url_range_t *a, const utf8_t *b_input, const url_range_t *b) {
+url_range_compare (const utf8_t *a_input, url_range_t a, const utf8_t *b_input, url_range_t b) {
   const utf8_t *a_slice;
   size_t a_len;
   url_range_slice(a_input, a, &a_slice, &a_len);
@@ -62,15 +105,28 @@ url_range_compare (const utf8_t *a_input, const url_range_t *a, const utf8_t *b_
 }
 
 static inline int
-url_range_compare_literal (const utf8_t *a_input, const url_range_t *a, const char *literal) {
-  return url_range_compare(a_input, a, (const utf8_t *) literal, &(url_range_t){0, strlen(literal)});
+url_range_compare_literal (const utf8_t *input, url_range_t range, const char *literal) {
+  return url_range_compare(input, range, (const utf8_t *) literal, (url_range_t){0, strlen(literal)});
 }
 
+static inline utf8_t *
+url_range_copy (const utf8_t *input, url_range_t range) {
+  size_t len = range.end - range.start;
+
+  utf8_t *output = malloc(len + 1 /*NULL*/);
+
+  memcpy(output, &input[range.start], len);
+
+  output[len] = 0;
+
+  return output;
+}
+
+// https://url.spec.whatwg.org/#is-special
 static inline bool
-url_is_special (const utf8_t *input, const url_components_t *components) {
-  const utf8_t *scheme;
-  size_t len;
-  url_range_slice(input, &components->scheme, &scheme, &len);
+url_is_special (const url_t *url) {
+  const utf8_t *scheme = url->scheme;
+  size_t len = strlen((const char *) scheme);
 
   // ftp | file
   if (len >= 3 && scheme[0] == 'f') {
@@ -93,8 +149,26 @@ url_is_special (const utf8_t *input, const url_components_t *components) {
 }
 
 int
-url_parse (const utf8_t *input, size_t len, const utf8_t *base, const url_components_t *components, url_components_t *result) {
+url_destroy (url_t *url) {
+  if (url->scheme) free(url->scheme);
+  if (url->host) free(url->host);
+  if (url->path) free(url->path);
+
+  free(url);
+
+  return 0;
+}
+
+int
+url_parse (const utf8_t *input, size_t len, const url_t *base, url_t **result) {
   if (len == (size_t) -1) len = strlen((char *) input);
+
+  url_t *url = malloc(sizeof(url_t));
+
+  url->flags = 0;
+  url->scheme = NULL;
+  url->host = NULL;
+  url->path = NULL;
 
   url_state_t state = url_state_scheme_start;
 
@@ -123,14 +197,14 @@ url_parse (const utf8_t *input, size_t len, const utf8_t *base, const url_compon
       if (is_ascii_alphanumeric(c) || c == 0x2b || c == 0x2d || c == 0x2e) {
         buffer.end = pointer + 1;
       } else if (c == 0x3a) {
-        result->scheme = buffer;
+        url->scheme = url_range_copy(input, buffer);
 
         buffer.start = buffer.end = pointer;
 
-        if (url_range_compare_literal(input, &result->scheme, "file") == 0) {
+        if (strcmp((char *) url->scheme, "file") == 0) {
           state = url_state_file;
-        } else if (url_is_special(input, result)) {
-          if (base != NULL && url_range_compare(input, &result->scheme, base, &components->scheme) == 0) {
+        } else if (url_is_special(url)) {
+          if (base != NULL && url_string_compare(url->scheme, base->scheme) == 0) {
             state = url_state_special_relative_or_authority;
           } else {
             state = url_state_special_authority_slashes;
@@ -142,7 +216,7 @@ url_parse (const utf8_t *input, size_t len, const utf8_t *base, const url_compon
           state = url_state_opaque_path;
         }
       } else {
-        buffer = url_range_empty;
+        buffer.start = buffer.end = 0;
         state = url_state_no_scheme;
         pointer = 0;
       }
@@ -150,6 +224,13 @@ url_parse (const utf8_t *input, size_t len, const utf8_t *base, const url_compon
 
     // https://url.spec.whatwg.org/#no-scheme-state
     case url_state_no_scheme:
+      if (base == NULL) return -1;
+
+      if (base->flags & url_has_opaque_path) {
+        if (c != 0x23) return -1;
+
+        url->scheme = url_string_copy(base->scheme, -1);
+      }
       break;
 
     // https://url.spec.whatwg.org/#special-relative-or-authority-state
@@ -194,7 +275,7 @@ url_parse (const utf8_t *input, size_t len, const utf8_t *base, const url_compon
     case url_state_file:
       if (c == 0x2f || c == 0x5c) {
         state = url_state_file_slash;
-      } else if (base != NULL && url_range_compare_literal(base, &components->scheme, "file") == 0) {
+      } else if (base != NULL && url_string_compare_literal(base->scheme, "file") == 0) {
         if (c == 0x3f) {
           state = url_state_query;
         } else if (c == 0x23) {
@@ -216,7 +297,7 @@ url_parse (const utf8_t *input, size_t len, const utf8_t *base, const url_compon
       if (c == 0x2f || c == 0x5c) {
         state = url_state_file_host;
       } else {
-        if (base != NULL && url_range_compare_literal(base, &components->scheme, "file") == 0) {
+        if (base != NULL && url_string_compare_literal(base->scheme, "file") == 0) {
           // TODO: Windows drive letter quirk
         }
 
@@ -233,9 +314,9 @@ url_parse (const utf8_t *input, size_t len, const utf8_t *base, const url_compon
         // TODO: Windows drive letter quirk
 
         if (buffer.start == buffer.end) {
-          result->host = url_range_empty;
+          url->host = NULL;
         } else {
-          result->host = buffer;
+          url->host = url_range_copy(input, buffer);
 
           buffer.start = buffer.end = pointer;
         }
@@ -250,7 +331,7 @@ url_parse (const utf8_t *input, size_t len, const utf8_t *base, const url_compon
     case url_state_path_start:
       buffer.start = buffer.end = pointer;
 
-      if (url_is_special(input, result)) {
+      if (url_is_special(url)) {
         state = url_state_path;
 
         if (c != 0x2f && c != 0x5c) pointer--;
@@ -269,13 +350,13 @@ url_parse (const utf8_t *input, size_t len, const utf8_t *base, const url_compon
     case url_state_path:
       if (
         (c == -1 || c == 0x2f) ||
-        (url_is_special(input, result) && c == 0x5c) ||
+        (url_is_special(url) && c == 0x5c) ||
         (c == 0x3f || c == 0x23)
       ) {
         if (buffer.start == buffer.end) {
-          result->path = url_range_empty;
+          url->path = NULL;
         } else {
-          result->path = buffer;
+          url->path = url_range_copy(input, buffer);
         }
 
         if (c == 0x3f) {
@@ -303,20 +384,33 @@ url_parse (const utf8_t *input, size_t len, const utf8_t *base, const url_compon
     }
   }
 
+  *result = url;
+
+  return 0;
+
+err:
+  url_destroy(url);
+
+  return -1;
+}
+
+int
+url_get_scheme (const url_t *url, const utf8_t **result, size_t *len) {
+  *result = url->scheme;
+  if (len) *len = strlen((const char *) url->scheme);
   return 0;
 }
 
 int
-url_get_scheme (const utf8_t *input, const url_components_t *components, const utf8_t **result, size_t *len) {
-  return url_range_slice(input, &components->scheme, result, len);
+url_get_host (const url_t *url, const utf8_t **result, size_t *len) {
+  *result = url->host;
+  if (len) *len = strlen((const char *) url->host);
+  return 0;
 }
 
 int
-url_get_host (const utf8_t *input, const url_components_t *components, const utf8_t **result, size_t *len) {
-  return url_range_slice(input, &components->host, result, len);
-}
-
-int
-url_get_path (const utf8_t *input, const url_components_t *components, const utf8_t **result, size_t *len) {
-  return url_range_slice(input, &components->path, result, len);
+url_get_path (const url_t *url, const utf8_t **result, size_t *len) {
+  *result = url->path;
+  if (len) *len = strlen((const char *) url->path);
+  return 0;
 }
