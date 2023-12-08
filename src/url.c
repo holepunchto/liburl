@@ -24,9 +24,9 @@ struct url_s {
 
   /**
    * https://user:pass@example.com:1234/foo/bar?baz#quux
-   *      |      |     |         | ^^^^|       |   |
-   *      |      |     |         | |   |       |   `----- fragment_start
-   *      |      |     |         | |   |       `--------- query_start
+   *      |      |     |         | ^^^^|        |   |
+   *      |      |     |         | |   |        |   `---- fragment_start
+   *      |      |     |         | |   |        `-------- query_start
    *      |      |     |         | |   `----------------- path_start
    *      |      |     |         | `--------------------- port
    *      |      |     |         `----------------------- host_end
@@ -294,18 +294,18 @@ url_parse (const utf8_t *input, size_t len, const url_t *base, url_t **result) {
         err = utf8_string_append_view(&url->buffer, url_get_path(base));
         if (err < 0) goto err;
 
-        url->components.query_start = url->buffer.len;
-
         err = utf8_string_append_character(&url->buffer, '?');
         if (err < 0) goto err;
+
+        url->components.query_start = url->buffer.len;
 
         err = utf8_string_append_view(&url->buffer, url_get_query(base));
         if (err < 0) goto err;
 
-        url->components.fragment_start = url->buffer.len;
-
         err = utf8_string_append_character(&url->buffer, '#');
         if (err < 0) goto err;
+
+        url->components.fragment_start = url->buffer.len;
 
         state = url_state_fragment;
       } else if (utf8_string_view_compare_literal(url_get_scheme(base), "file", 4) != 0) {
@@ -317,10 +317,7 @@ url_parse (const utf8_t *input, size_t len, const url_t *base, url_t **result) {
 
         url->components.scheme_end = url->buffer.len;
 
-        err = utf8_string_append_character(&url->buffer, ':');
-        if (err < 0) goto err;
-
-        err = utf8_string_append_literal(&url->buffer, (utf8_t *) "//", 2);
+        err = utf8_string_append_literal(&url->buffer, (utf8_t *) "://", 3);
         if (err < 0) goto err;
 
         url->components.username_end = url->buffer.len;
@@ -442,10 +439,10 @@ url_parse (const utf8_t *input, size_t len, const url_t *base, url_t **result) {
           utf8_string_view_t query = url_get_query(base);
 
           if (!utf8_string_view_empty(query)) {
-            url->components.query_start = url->buffer.len;
-
             err = utf8_string_append_character(&url->buffer, '?');
             if (err < 0) goto err;
+
+            url->components.query_start = url->buffer.len;
 
             err = utf8_string_append_view(&url->buffer, url_get_query(base));
             if (err < 0) goto err;
@@ -697,14 +694,13 @@ url_parse (const utf8_t *input, size_t len, const url_t *base, url_t **result) {
         if (err < 0) goto err;
 
         if (c == 0x3f) {
-          url->components.query_start = url->buffer.len;
-
-          err = utf8_string_append_character(&url->buffer, '?');
-          if (err < 0) goto err;
-
           state = url_state_query;
         } else if (c == 0x23) {
-          url->components.query_start = url->buffer.len;
+          url->components.query_start = url->buffer.len + 1;
+
+          err = utf8_string_append_character(&url->buffer, '#');
+          if (err < 0) goto err;
+
           url->components.fragment_start = url->buffer.len;
 
           state = url_state_fragment;
@@ -714,15 +710,19 @@ url_parse (const utf8_t *input, size_t len, const url_t *base, url_t **result) {
           state = url_state_path;
           pointer--;
         } else {
-          url->components.query_start = url->buffer.len;
+          utf8_string_view_t query = url_get_query(base);
 
-          err = utf8_string_append_character(&url->buffer, '?');
-          if (err < 0) goto err;
+          if (!utf8_string_view_empty(query)) {
+            err = utf8_string_append_character(&url->buffer, '?');
+            if (err < 0) goto err;
 
-          err = utf8_string_append_view(&url->buffer, url_get_query(base));
-          if (err < 0) goto err;
+            url->components.query_start = url->buffer.len;
 
-          url->components.fragment_start = url->buffer.len;
+            err = utf8_string_append_view(&url->buffer, url_get_query(base));
+            if (err < 0) goto err;
+          } else {
+            url->components.query_start = url->buffer.len;
+          }
         }
       } else {
         state = url_state_path;
@@ -835,6 +835,13 @@ url_parse (const utf8_t *input, size_t len, const url_t *base, url_t **result) {
         if (c == 0x3f) {
           state = url_state_query;
         } else if (c == 0x23) {
+          url->components.query_start = url->buffer.len + 1;
+
+          err = utf8_string_append_character(&url->buffer, '#');
+          if (err < 0) goto err;
+
+          url->components.fragment_start = url->buffer.len;
+
           state = url_state_fragment;
         }
       } else {
@@ -847,23 +854,75 @@ url_parse (const utf8_t *input, size_t len, const url_t *base, url_t **result) {
 
     // https://url.spec.whatwg.org/#cannot-be-a-base-url-path-state
     case url_state_opaque_path:
+      if (c == 0x3f) {
+        state = url_state_query;
+      } else if (c == 0x23) {
+        url->components.query_start = url->buffer.len + 1;
+
+        err = utf8_string_append_character(&url->buffer, '#');
+        if (err < 0) goto err;
+
+        url->components.fragment_start = url->buffer.len;
+
+        state = url_state_fragment;
+      } else if (c != -1) {
+        // TODO Percent encode
+
+        err = utf8_string_append_character(&url->buffer, c);
+        if (err < 0) goto err;
+      }
       break;
 
     // https://url.spec.whatwg.org/#query-state
     case url_state_query:
+      if (c == 0x23 || c == -1) {
+        // TODO Percent encode
+
+        err = utf8_string_append_character(&url->buffer, '?');
+        if (err < 0) goto err;
+
+        url->components.query_start = url->buffer.len;
+
+        err = utf8_string_append(&url->buffer, &buffer);
+        if (err < 0) goto err;
+
+        utf8_string_clear(&buffer);
+
+        url->components.fragment_start = url->buffer.len + 1;
+
+        if (c == 0x23) {
+          err = utf8_string_append_character(&url->buffer, '#');
+          if (err < 0) goto err;
+
+          state = url_state_fragment;
+        }
+      } else if (c != -1) {
+        err = utf8_string_append_character(&buffer, c);
+        if (err < 0) goto err;
+      }
       break;
 
     // https://url.spec.whatwg.org/#fragment-state
     case url_state_fragment:
+      if (c != -1) {
+        // TODO Percent encode
+
+        err = utf8_string_append_character(&url->buffer, c);
+        if (err < 0) goto err;
+      }
       break;
     }
   }
 
   *result = url;
 
+  utf8_string_destroy(&buffer);
+
   return 0;
 
 err:
+  utf8_string_destroy(&buffer);
+
   url_destroy(url);
 
   return -1;
@@ -910,12 +969,12 @@ url_get_port (const url_t *url) {
 
 utf8_string_view_t
 url_get_path (const url_t *url) {
-  return utf8_string_substring(&url->buffer, url->components.path_start, url->components.query_start);
+  return utf8_string_substring(&url->buffer, url->components.path_start, url->components.query_start - 1 /* ? */);
 }
 
 utf8_string_view_t
 url_get_query (const url_t *url) {
-  return utf8_string_substring(&url->buffer, url->components.query_start, url->components.fragment_start);
+  return utf8_string_substring(&url->buffer, url->components.query_start, url->components.fragment_start - 1 /* # */);
 }
 
 utf8_string_view_t

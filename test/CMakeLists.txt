@@ -1,10 +1,14 @@
 list(APPEND tests
   parse-file-scheme
   parse-file-scheme-empty-path
+  parse-file-scheme-fragment
   parse-file-scheme-host
+  parse-file-scheme-query
+  parse-file-scheme-query-fragment
   parse-file-scheme-relative-path
   parse-file-scheme-root-path
   parse-http-scheme
+  parse-http-scheme-port
   parse-http-scheme-relative-path
   parse-http-scheme-username
   parse-http-scheme-username-password
