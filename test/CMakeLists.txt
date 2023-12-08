@@ -1,7 +1,12 @@
 list(APPEND tests
   parse-file-scheme
   parse-file-scheme-empty-path
+  parse-file-scheme-host
   parse-file-scheme-relative-path
+  parse-http-scheme
+  parse-http-scheme-relative-path
+  parse-http-scheme-username
+  parse-http-scheme-username-password
 )
 
 foreach(test IN LISTS tests)
