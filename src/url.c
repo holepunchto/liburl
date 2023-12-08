@@ -398,6 +398,8 @@ url_parse (const utf8_t *input, size_t len, const url_t *base, url_t **result) {
 
           err = utf8_string_append_character(&url->buffer, '@');
           if (err < 0) goto err;
+        } else {
+          url->components.username_end = url->buffer.len + 2;
         }
 
         err = utf8_string_append_literal(&url->buffer, (utf8_t *) "//", 2);
@@ -479,6 +481,8 @@ url_parse (const utf8_t *input, size_t len, const url_t *base, url_t **result) {
 
           err = utf8_string_append_character(&url->buffer, '@');
           if (err < 0) goto err;
+        } else {
+          url->components.username_end = url->buffer.len + 2;
         }
 
         err = utf8_string_append_literal(&url->buffer, (utf8_t *) "//", 2);
