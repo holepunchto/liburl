@@ -263,9 +263,16 @@ url_parse (const utf8_t *input, size_t len, const url_t *base, url_t **result) {
             state = url_state_special_authority_slashes;
           }
         } else if (pointer + 1 < len && input[pointer + 1] == 0x2f) {
+          url->components.username_end = url->buffer.len;
+
           state = url_state_path_or_authority;
           pointer++;
         } else {
+          url->components.username_end = url->buffer.len;
+          url->components.host_start = url->buffer.len;
+          url->components.host_end = url->buffer.len;
+          url->components.path_start = url->buffer.len;
+
           state = url_state_opaque_path;
         }
       } else {
@@ -353,6 +360,11 @@ url_parse (const utf8_t *input, size_t len, const url_t *base, url_t **result) {
 
         state = url_state_authority;
       } else {
+        url->components.username_end = url->buffer.len;
+        url->components.host_start = url->buffer.len;
+        url->components.host_end = url->buffer.len;
+        url->components.path_start = url->buffer.len;
+
         state = url_state_path;
         pointer--;
       }
@@ -429,6 +441,13 @@ url_parse (const utf8_t *input, size_t len, const url_t *base, url_t **result) {
         if (c == 0x3f) {
           state = url_state_query;
         } else if (c == 0x23) {
+          url->components.query_start = url->buffer.len + 1;
+
+          err = utf8_string_append_character(&url->buffer, '#');
+          if (err < 0) goto err;
+
+          url->components.fragment_start = url->buffer.len;
+
           state = url_state_fragment;
         } else if (c != -1) {
           // TODO: Shorten path
@@ -791,6 +810,13 @@ url_parse (const utf8_t *input, size_t len, const url_t *base, url_t **result) {
       } else if (c == 0x3f) {
         state = url_state_query;
       } else if (c == 0x23) {
+        url->components.query_start = url->buffer.len + 1;
+
+        err = utf8_string_append_character(&url->buffer, '#');
+        if (err < 0) goto err;
+
+        url->components.fragment_start = url->buffer.len;
+
         state = url_state_fragment;
       } else if (c != -1) {
         state = url_state_path;
