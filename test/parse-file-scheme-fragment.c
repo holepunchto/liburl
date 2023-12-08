@@ -1,3 +1,4 @@
+#include "../include/url.h"
 #include "helpers.h"
 
 int
@@ -13,4 +14,6 @@ main () {
   test_component(url, path, "/foo/bar");
   test_component(url, query, "");
   test_component(url, fragment, "baz");
+
+  url_destroy(url);
 }
