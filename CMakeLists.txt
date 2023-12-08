@@ -31,7 +31,7 @@ target_include_directories(
     $<TARGET_PROPERTY:utf,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
-add_library(url_shared SHARED $<TARGET_OBJECTS:url>)
+add_library(url_shared SHARED)
 
 set_target_properties(
   url_shared
@@ -40,13 +40,27 @@ set_target_properties(
   WINDOWS_EXPORT_ALL_SYMBOLS ON
 )
 
-add_library(url_static STATIC $<TARGET_OBJECTS:url>)
+target_link_libraries(
+  url_shared
+  PUBLIC
+    url
+    utf_shared
+)
+
+add_library(url_static STATIC)
 
 set_target_properties(
   url_static
   PROPERTIES
   OUTPUT_NAME url
   PREFIX lib
+)
+
+target_link_libraries(
+  url_static
+  PUBLIC
+    url
+    utf_static
 )
 
 install(TARGETS url_shared url_static)

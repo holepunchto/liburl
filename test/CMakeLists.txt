@@ -1,5 +1,7 @@
 list(APPEND tests
-  parse
+  parse-file-scheme
+  parse-file-scheme-empty-path
+  parse-file-scheme-relative-path
 )
 
 foreach(test IN LISTS tests)
