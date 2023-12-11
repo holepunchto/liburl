@@ -1007,16 +1007,7 @@ url_get_host (const url_t *url) {
 
 utf8_string_view_t
 url_get_port (const url_t *url) {
-  size_t start, end;
-
-  if (url->components.port == url_component_unset) {
-    start = end = 0;
-  } else {
-    start = url->components.host_end + 1 /* : */;
-    end = url->components.path_start;
-  }
-
-  return utf8_string_substring(&url->buffer, start, end);
+  return utf8_string_substring(&url->buffer, url->components.host_end + 1 /* : */, url->components.path_start);
 }
 
 utf8_string_view_t
