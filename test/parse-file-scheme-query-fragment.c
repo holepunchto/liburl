@@ -15,5 +15,5 @@ main () {
   test_component(url, query, "baz");
   test_component(url, fragment, "quux");
 
-  url_destroy(url);
+  url_destroy(&url);
 }

@@ -15,5 +15,5 @@ main () {
   test_component(url, query, "foo");
   test_component(url, fragment, "bar");
 
-  url_destroy(url);
+  url_destroy(&url);
 }

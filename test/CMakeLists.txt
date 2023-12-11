@@ -2,6 +2,11 @@ list(APPEND tests
   parse-custom-scheme-fragment
   parse-custom-scheme-query
   parse-custom-scheme-query-fragment
+  parse-custom-scheme-relative-bare-path
+  parse-custom-scheme-relative-bare-path-username
+  parse-custom-scheme-relative-opaque-path-fragment
+  parse-custom-scheme-relative-opaque-path-fragment-with-query
+  parse-custom-scheme-relative-path
   parse-custom-scheme-root-path
   parse-custom-scheme-root-path-fragment
   parse-custom-scheme-root-path-query
@@ -14,11 +19,16 @@ list(APPEND tests
   parse-file-scheme-query
   parse-file-scheme-query-fragment
   parse-file-scheme-relative-path
+  parse-file-scheme-relative-path-with-scheme
   parse-file-scheme-root-path
   parse-http-scheme
+  parse-http-scheme-base
   parse-http-scheme-port
   parse-http-scheme-port-default
+  parse-http-scheme-protocol-relative
+  parse-http-scheme-relative-bare-path
   parse-http-scheme-relative-path
+  parse-http-scheme-relative-path-with-scheme
   parse-http-scheme-username
   parse-http-scheme-username-password
 )

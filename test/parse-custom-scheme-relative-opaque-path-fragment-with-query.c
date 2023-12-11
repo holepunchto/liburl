@@ -3,17 +3,19 @@
 
 int
 main () {
-  test_parse(url, "scheme:#foo", NULL);
+  test_parse(base, "scheme:foo/bar?baz", NULL);
 
-  test_component(url, href, "scheme:#foo");
+  test_parse(url, "#quux", &base);
+
+  test_component(url, href, "scheme:foo/bar?baz#quux");
   test_component(url, scheme, "scheme");
   test_component(url, username, "");
   test_component(url, password, "");
   test_component(url, host, "");
   test_component(url, port, "");
-  test_component(url, path, "");
-  test_component(url, query, "");
-  test_component(url, fragment, "foo");
+  test_component(url, path, "foo/bar");
+  test_component(url, query, "baz");
+  test_component(url, fragment, "quux");
 
   url_destroy(&url);
 }

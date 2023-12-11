@@ -3,15 +3,15 @@
 
 int
 main () {
-  test_parse(base, "file:///foo/bar", NULL);
+  test_parse(base, "http://example.com/foo/bar", NULL);
 
-  test_parse(url, "./baz", &base);
+  test_parse(url, "http:./baz", &base);
 
-  test_component(url, href, "file:///foo/baz");
-  test_component(url, scheme, "file");
+  test_component(url, href, "http://example.com/foo/baz");
+  test_component(url, scheme, "http");
   test_component(url, username, "");
   test_component(url, password, "");
-  test_component(url, host, "");
+  test_component(url, host, "example.com");
   test_component(url, port, "");
   test_component(url, path, "/foo/baz");
   test_component(url, query, "");
