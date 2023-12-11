@@ -57,29 +57,56 @@ url_parse (url_t *url, const utf8_t *input, size_t len, const url_t *base);
 utf8_string_view_t
 url_get_href (const url_t *url);
 
+int
+url_set_href (url_t *url, const utf8_t *input, size_t len);
+
 utf8_string_view_t
 url_get_scheme (const url_t *url);
+
+int
+url_set_scheme (url_t *url, const utf8_t *input, size_t len);
 
 utf8_string_view_t
 url_get_username (const url_t *url);
 
+int
+url_set_username (url_t *url, const utf8_t *input, size_t len);
+
 utf8_string_view_t
 url_get_password (const url_t *url);
+
+int
+url_set_password (url_t *url, const utf8_t *input, size_t len);
 
 utf8_string_view_t
 url_get_host (const url_t *url);
 
+int
+url_set_host (url_t *url, const utf8_t *input, size_t len);
+
 utf8_string_view_t
 url_get_port (const url_t *url);
+
+int
+url_set_port (url_t *url, const utf8_t *input, size_t len);
 
 utf8_string_view_t
 url_get_path (const url_t *url);
 
+int
+url_set_path (url_t *url, const utf8_t *input, size_t len);
+
 utf8_string_view_t
 url_get_query (const url_t *url);
 
+int
+url_set_query (url_t *url, const utf8_t *input, size_t len);
+
 utf8_string_view_t
 url_get_fragment (const url_t *url);
+
+int
+url_set_fragment (url_t *url, const utf8_t *input, size_t len);
 
 #ifdef __cplusplus
 }
