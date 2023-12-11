@@ -26,11 +26,15 @@ list(APPEND tests
   parse-http-scheme-port
   parse-http-scheme-port-default
   parse-http-scheme-protocol-relative
+  parse-http-scheme-query
+  parse-http-scheme-query-percent-encode
   parse-http-scheme-relative-bare-path
   parse-http-scheme-relative-path
   parse-http-scheme-relative-path-with-scheme
   parse-http-scheme-username
   parse-http-scheme-username-password
+  parse-http-scheme-username-password-percent-encode
+  parse-http-scheme-username-percent-encode
 )
 
 foreach(test IN LISTS tests)

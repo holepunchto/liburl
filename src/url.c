@@ -10,6 +10,7 @@
 #include "../include/url.h"
 #include "infra.h"
 #include "percent-encode-set.h"
+#include "percent-encode.h"
 
 typedef enum {
   url_state_scheme_start,
@@ -607,9 +608,7 @@ url_parse (url_t *url, const utf8_t *input, size_t len, const url_t *base) {
             continue;
           }
 
-          // TODO Percent encode
-
-          err = utf8_string_append_character(&url->buffer, c);
+          err = url__percent_encode_character(c, url__userinfo_percent_encode_set, &url->buffer);
           if (err < 0) goto err;
         }
 
@@ -904,9 +903,7 @@ url_parse (url_t *url, const utf8_t *input, size_t len, const url_t *base) {
           state = url_state_fragment;
         }
       } else {
-        // TODO Percent encode
-
-        err = utf8_string_append_character(&buffer, c);
+        err = url__percent_encode_character(c, url__path_percent_encode_set, &buffer);
         if (err < 0) goto err;
       }
       break;
@@ -925,9 +922,7 @@ url_parse (url_t *url, const utf8_t *input, size_t len, const url_t *base) {
 
         state = url_state_fragment;
       } else if (c != -1) {
-        // TODO Percent encode
-
-        err = utf8_string_append_character(&url->buffer, c);
+        err = url__percent_encode_character(c, url__c0_control_percent_encode_set, &url->buffer);
         if (err < 0) goto err;
       }
       break;
@@ -935,14 +930,16 @@ url_parse (url_t *url, const utf8_t *input, size_t len, const url_t *base) {
     // https://url.spec.whatwg.org/#query-state
     case url_state_query:
       if (c == 0x23 || c == -1) {
-        // TODO Percent encode
-
         err = utf8_string_append_character(&url->buffer, '?');
         if (err < 0) goto err;
 
+        url_percent_encode_set_t *query_percent_encode_set = url__is_special(url)
+                                                               ? &url__special_query_percent_encode_set
+                                                               : &url__query_percent_encode_set;
+
         url->components.query_start = url->buffer.len;
 
-        err = utf8_string_append(&url->buffer, &buffer);
+        err = url__percent_encode_string(&buffer, *query_percent_encode_set, &url->buffer);
         if (err < 0) goto err;
 
         utf8_string_clear(&buffer);
@@ -964,9 +961,7 @@ url_parse (url_t *url, const utf8_t *input, size_t len, const url_t *base) {
     // https://url.spec.whatwg.org/#fragment-state
     case url_state_fragment:
       if (c != -1) {
-        // TODO Percent encode
-
-        err = utf8_string_append_character(&url->buffer, c);
+        err = url__percent_encode_character(c, url__fragment_percent_encode_set, &url->buffer);
         if (err < 0) goto err;
       }
       break;
