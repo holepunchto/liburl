@@ -7,15 +7,15 @@ main () {
 
   test_parse(url, "//example.org/baz", &base);
 
-  test_component(url, href, "http://example.org/baz");
-  test_component(url, scheme, "http");
-  test_component(url, username, "");
-  test_component(url, password, "");
-  test_component(url, host, "example.org");
-  test_component(url, port, "");
-  test_component(url, path, "/baz");
-  test_component(url, query, "");
-  test_component(url, fragment, "");
+  test_get(url, href, "http://example.org/baz");
+  test_get(url, scheme, "http");
+  test_get(url, username, "");
+  test_get(url, password, "");
+  test_get(url, host, "example.org");
+  test_get(url, port, "");
+  test_get(url, path, "/baz");
+  test_get(url, query, "");
+  test_get(url, fragment, "");
 
   url_destroy(&url);
 }

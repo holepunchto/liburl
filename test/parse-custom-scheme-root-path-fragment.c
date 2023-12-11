@@ -5,15 +5,15 @@ int
 main () {
   test_parse(url, "scheme:/#foo", NULL);
 
-  test_component(url, href, "scheme:/#foo");
-  test_component(url, scheme, "scheme");
-  test_component(url, username, "");
-  test_component(url, password, "");
-  test_component(url, host, "");
-  test_component(url, port, "");
-  test_component(url, path, "/");
-  test_component(url, query, "");
-  test_component(url, fragment, "foo");
+  test_get(url, href, "scheme:/#foo");
+  test_get(url, scheme, "scheme");
+  test_get(url, username, "");
+  test_get(url, password, "");
+  test_get(url, host, "");
+  test_get(url, port, "");
+  test_get(url, path, "/");
+  test_get(url, query, "");
+  test_get(url, fragment, "foo");
 
   url_destroy(&url);
 }

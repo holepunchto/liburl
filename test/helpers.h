@@ -14,7 +14,7 @@
     printf("%.*s\n", (int) href.len, href.data); \
   }
 
-#define test_component(url, component, expected) \
+#define test_get(url, component, expected) \
   utf8_string_view_t component; \
   { \
     component = url_get_##component(&url); \
