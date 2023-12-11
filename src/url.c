@@ -101,6 +101,38 @@ url__is_special (const url_t *url) {
   return (url->flags & url_is_special) != 0;
 }
 
+// https://url.spec.whatwg.org/#include-credentials
+static inline bool
+url__includes_credentials (const url_t *url) {
+  return (url->flags & url_includes_credentials) != 0;
+}
+
+// https://url.spec.whatwg.org/#url-opaque-path
+static inline bool
+url__has_opaque_path (const url_t *url) {
+  return (url->flags & url_has_opaque_path) != 0;
+}
+
+// https://url.spec.whatwg.org/#cannot-have-a-username-password-port
+static inline bool
+url__cannot_have_username_password_port (const url_t *url) {
+  return utf8_string_view_empty(url_get_host(url)) || utf8_string_view_compare_literal(url_get_scheme(url), (utf8_t *) "file", 4);
+}
+
+// https://url.spec.whatwg.org/#shorten-a-urls-path
+static inline void
+url__shorten_path (url_t *url) {
+  assert((url->flags & url_has_opaque_path) == 0);
+
+  // TODO Windows drive letter quick
+
+  size_t i = utf8_string_view_last_index_of_character(url_get_path(url), '/', -1);
+
+  if (i == (size_t) -1) return;
+
+  url->buffer.len = url->components.path_start + i;
+}
+
 // https://url.spec.whatwg.org/#single-dot-path-segment
 static inline bool
 url__is_single_dot_path_segment (const utf8_string_view_t path) {
@@ -143,26 +175,6 @@ url__is_double_dot_path_segment (const utf8_string_view_t path) {
     data[0] == '%' && data[1] == '2' && url__to_ascii_lowercase(data[2]) == 'e' &&
     data[3] == '%' && data[4] == '2' && url__to_ascii_lowercase(data[5]) == 'e'
   );
-}
-
-// https://url.spec.whatwg.org/#cannot-have-a-username-password-port
-static inline bool
-url__cannot_have_username_password_port (const url_t *url) {
-  return utf8_string_view_empty(url_get_host(url)) || utf8_string_view_compare_literal(url_get_scheme(url), "file", 4);
-}
-
-// https://url.spec.whatwg.org/#shorten-a-urls-path
-static inline void
-url__shorten_path (url_t *url) {
-  assert((url->flags & url_has_opaque_path) == 0);
-
-  // TODO Windows drive letter quick
-
-  size_t i = utf8_string_view_last_index_of_character(url_get_path(url), '/', -1);
-
-  if (i == (size_t) -1) return;
-
-  url->buffer.len = url->components.path_start + i;
 }
 
 // https://url.spec.whatwg.org/#ipv4-number-parser
@@ -219,8 +231,7 @@ url__parse_host (const utf8_string_view_t input, bool is_opaque, utf8_string_t *
   assert(input.len != 0);
 
   utf8_string_t domain;
-  err = utf8_string_init(&domain);
-  if (err < 0) goto err;
+  utf8_string_init(&domain);
 
   err = url__percent_decode_string(input, &domain);
   if (err < 0) goto err;
@@ -248,10 +259,8 @@ err:
 }
 
 static inline int
-url__parse (url_t *url, const utf8_t *input, size_t len, const url_t *base, url_state_t state_override) {
+url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_state_t state_override) {
   int err;
-
-  if (len == (size_t) -1) len = strlen((char *) input);
 
   if (state_override == 0) {
     url->flags = 0;
@@ -264,21 +273,19 @@ url__parse (url_t *url, const utf8_t *input, size_t len, const url_t *base, url_
     url->components.path_start = 0;
     url->components.query_start = url_component_unset;
     url->components.fragment_start = url_component_unset;
-  }
 
-  err = utf8_string_init(&url->buffer);
-  if (err < 0) goto err;
+    utf8_string_init(&url->buffer);
+  }
 
   url_state_t state = state_override || url_state_scheme_start;
 
   utf8_string_t buffer;
-  err = utf8_string_init(&buffer);
-  if (err < 0) goto err;
+  utf8_string_init(&buffer);
 
   bool at_sign_seen = false, inside_brackets = false, password_token_seen = false;
 
-  for (size_t pointer = 0; pointer <= len; pointer++) {
-    int16_t c = pointer < len ? input[pointer] : -1;
+  for (size_t pointer = 0, n = input.len; pointer <= n; pointer++) {
+    int16_t c = pointer < n ? input.data[pointer] : -1;
 
     switch (state) {
     // https://url.spec.whatwg.org/#scheme-start-state
@@ -288,9 +295,11 @@ url__parse (url_t *url, const utf8_t *input, size_t len, const url_t *base, url_
         if (err < 0) goto err;
 
         state = url_state_scheme;
-      } else {
+      } else if (state_override == 0) {
         state = url_state_no_scheme;
         pointer--;
+      } else {
+        goto err;
       }
       break;
 
@@ -300,6 +309,45 @@ url__parse (url_t *url, const utf8_t *input, size_t len, const url_t *base, url_
         err = utf8_string_append_character(&buffer, url__to_ascii_lowercase(c));
         if (err < 0) goto err;
       } else if (c == 0x3a) {
+        if (state_override) {
+          utf8_string_view_t scheme = url_get_scheme(url);
+
+          if (url__is_special(url) != url__is_special_scheme(utf8_string_substring(&buffer, 0, buffer.len))) {
+            goto done;
+          }
+
+          if (url__includes_credentials(url) || url->components.port != url_component_unset) {
+            if (utf8_string_compare_literal(&buffer, (utf8_t *) "file", 4) == 0) {
+              goto done;
+            }
+          }
+
+          if (utf8_string_view_compare_literal(url_get_scheme(url), (utf8_t *) "file", 4) == 0 && utf8_string_view_empty(url_get_host(url))) {
+            goto done;
+          }
+
+          uint32_t difference = buffer.len - url->components.scheme_end;
+
+          err = utf8_string_replace(&url->buffer, 0, url->components.scheme_end, &buffer);
+          if (err < 0) goto err;
+
+          url->components.scheme_end += difference;
+          url->components.username_end += difference;
+          url->components.host_start += difference;
+          url->components.host_end += difference;
+          url->components.path_start += difference;
+
+          if (url->components.query_start != url_component_unset) {
+            url->components.query_start += difference;
+          }
+
+          if (url->components.fragment_start != url_component_unset) {
+            url->components.fragment_start += difference;
+          }
+
+          goto done;
+        }
+
         err = utf8_string_append(&url->buffer, &buffer);
         if (err < 0) goto err;
 
@@ -314,7 +362,7 @@ url__parse (url_t *url, const utf8_t *input, size_t len, const url_t *base, url_
 
         utf8_string_clear(&buffer);
 
-        if (utf8_string_view_compare_literal(url_get_scheme(url), "file", 4) == 0) {
+        if (utf8_string_view_compare_literal(url_get_scheme(url), (utf8_t *) "file", 4) == 0) {
           err = utf8_string_append_literal(&url->buffer, (utf8_t *) "//", 2);
           if (err < 0) goto err;
 
@@ -329,7 +377,7 @@ url__parse (url_t *url, const utf8_t *input, size_t len, const url_t *base, url_
           } else {
             state = url_state_special_authority_slashes;
           }
-        } else if (pointer + 1 < len && input[pointer + 1] == 0x2f) {
+        } else if (pointer + 1 < input.len && input.data[pointer + 1] == 0x2f) {
           url->components.username_end = url->buffer.len;
 
           state = url_state_path_or_authority;
@@ -344,11 +392,13 @@ url__parse (url_t *url, const utf8_t *input, size_t len, const url_t *base, url_
 
           state = url_state_opaque_path;
         }
-      } else {
+      } else if (state_override == 0) {
         utf8_string_clear(&buffer);
 
         state = url_state_no_scheme;
         pointer = -1;
+      } else {
+        goto err;
       }
       break;
 
@@ -356,7 +406,7 @@ url__parse (url_t *url, const utf8_t *input, size_t len, const url_t *base, url_
     case url_state_no_scheme:
       if (base == NULL) goto err;
 
-      if (base->flags & url_has_opaque_path) {
+      if (url__has_opaque_path(base)) {
         if (c != 0x23) goto err;
 
         err = utf8_string_append_view(&url->buffer, url_get_scheme(base));
@@ -398,7 +448,7 @@ url__parse (url_t *url, const utf8_t *input, size_t len, const url_t *base, url_
         url->components.fragment_start = url->buffer.len;
 
         state = url_state_fragment;
-      } else if (utf8_string_view_compare_literal(url_get_scheme(base), "file", 4) != 0) {
+      } else if (utf8_string_view_compare_literal(url_get_scheme(base), (utf8_t *) "file", 4) != 0) {
         state = url_state_relative;
         pointer--;
       } else {
@@ -421,7 +471,7 @@ url__parse (url_t *url, const utf8_t *input, size_t len, const url_t *base, url_
 
     // https://url.spec.whatwg.org/#special-relative-or-authority-state
     case url_state_special_relative_or_authority:
-      if (c == 0x2f && pointer + 1 < len && input[pointer + 1] == 0x2f) {
+      if (c == 0x2f && pointer + 1 < input.len && input.data[pointer + 1] == 0x2f) {
         err = utf8_string_append_literal(&url->buffer, (utf8_t *) "//", 2);
         if (err < 0) goto err;
 
@@ -457,7 +507,7 @@ url__parse (url_t *url, const utf8_t *input, size_t len, const url_t *base, url_
 
     // https://url.spec.whatwg.org/#relative-state
     case url_state_relative:
-      assert(utf8_string_view_compare_literal(url_get_scheme(base), "file", 4) != 0);
+      assert(utf8_string_view_compare_literal(url_get_scheme(base), (utf8_t *) "file", 4) != 0);
 
       if (url->components.scheme_end == 0) {
         err = utf8_string_append_view(&url->buffer, url_get_scheme(base));
@@ -649,7 +699,7 @@ url__parse (url_t *url, const utf8_t *input, size_t len, const url_t *base, url_
     case url_state_special_authority_slashes:
       state = url_state_special_authority_ignore_slashes;
 
-      if (c == 0x2f && pointer + 1 < len && input[pointer + 1] == 0x2f) {
+      if (c == 0x2f && pointer + 1 < input.len && input.data[pointer + 1] == 0x2f) {
         err = utf8_string_append_literal(&url->buffer, (utf8_t *) "//", 2);
         if (err < 0) goto err;
 
@@ -810,7 +860,7 @@ url__parse (url_t *url, const utf8_t *input, size_t len, const url_t *base, url_
     case url_state_file:
       if (c == 0x2f || c == 0x5c) {
         state = url_state_file_slash;
-      } else if (base != NULL && utf8_string_view_compare_literal(url_get_scheme(base), "file", 4) == 0) {
+      } else if (base != NULL && utf8_string_view_compare_literal(url_get_scheme(base), (utf8_t *) "file", 4) == 0) {
         url->components.host_start = url->buffer.len;
 
         err = utf8_string_append_view(&url->buffer, url_get_host(base));
@@ -867,7 +917,7 @@ url__parse (url_t *url, const utf8_t *input, size_t len, const url_t *base, url_
       if (c == 0x2f || c == 0x5c) {
         state = url_state_file_host;
       } else {
-        if (base != NULL && utf8_string_view_compare_literal(url_get_scheme(base), "file", 4) == 0) {
+        if (base != NULL && utf8_string_view_compare_literal(url_get_scheme(base), (utf8_t *) "file", 4) == 0) {
           url->components.host_start = url->buffer.len;
 
           err = utf8_string_append_view(&url->buffer, url_get_host(base));
@@ -1047,6 +1097,7 @@ url__parse (url_t *url, const utf8_t *input, size_t len, const url_t *base, url_
     }
   }
 
+done:
   utf8_string_destroy(&buffer);
 
   return 0;
@@ -1066,7 +1117,9 @@ url_destroy (url_t *url) {
 
 int
 url_parse (url_t *url, const utf8_t *input, size_t len, const url_t *base) {
-  return url__parse(url, input, len, base, 0);
+  if (len == (size_t) -1) len = strlen((char *) input);
+
+  return url__parse(url, utf8_string_view_init(input, len), base, 0);
 }
 
 utf8_string_view_t
@@ -1079,7 +1132,7 @@ url_set_href (url_t *url, const utf8_t *input, size_t len) {
   int err;
 
   url_t parsed_url;
-  err = url__parse(&parsed_url, input, len, NULL, 0);
+  err = url__parse(&parsed_url, utf8_string_view_init(input, len), NULL, 0);
   if (err < 0) return err;
 
   url_destroy(url);
@@ -1098,8 +1151,16 @@ int
 url_set_scheme (url_t *url, const utf8_t *input, size_t len) {
   int err;
 
-  err = url__parse(url, input, len, NULL, url_state_scheme_start);
+  utf8_string_t string;
+  err = utf8_string_view_concat_character(utf8_string_view_init(input, len), ':', &string);
   if (err < 0) return err;
+
+  err = url__parse(url, utf8_string_substring(&string, 0, string.len), NULL, url_state_scheme_start);
+  if (err < 0) {
+    utf8_string_destroy(&string);
+
+    return err;
+  }
 
   return 1;
 }
@@ -1149,11 +1210,11 @@ int
 url_set_host (url_t *url, const utf8_t *input, size_t len) {
   int err;
 
-  if (url->flags & url_has_opaque_path) {
+  if (url__has_opaque_path(url)) {
     return 0;
   }
 
-  err = url__parse(url, input, len, NULL, url_state_host);
+  err = url__parse(url, utf8_string_view_init(input, len), NULL, url_state_host);
   if (err < 0) return err;
 
   return 1;
@@ -1172,12 +1233,14 @@ url_set_port (url_t *url, const utf8_t *input, size_t len) {
     return 0;
   }
 
+  if (len == (size_t) -1) len = strlen((char *) input);
+
   if (len == 0) {
     url->components.port = url_component_unset;
 
     // TODO Adjust offsets
   } else {
-    err = url__parse(url, input, len, NULL, url_state_port);
+    err = url__parse(url, utf8_string_view_init(input, len), NULL, url_state_port);
     if (err < 0) return err;
   }
 
@@ -1193,13 +1256,13 @@ int
 url_set_path (url_t *url, const utf8_t *input, size_t len) {
   int err;
 
-  if (url->flags & url_has_opaque_path) {
+  if (url__has_opaque_path(url)) {
     return 0;
   }
 
   // TODO Empty path
 
-  err = url__parse(url, input, len, NULL, url_state_path_start);
+  err = url__parse(url, utf8_string_view_init(input, len), NULL, url_state_path_start);
   if (err < 0) return err;
 
   return 1;
@@ -1214,6 +1277,8 @@ int
 url_set_query (url_t *url, const utf8_t *input, size_t len) {
   int err;
 
+  if (len == (size_t) -1) len = strlen((char *) input);
+
   // TODO Empty query
 
   if (len == 0) {
@@ -1222,7 +1287,7 @@ url_set_query (url_t *url, const utf8_t *input, size_t len) {
     return 1;
   }
 
-  err = url__parse(url, input, len, NULL, url_state_query);
+  err = url__parse(url, utf8_string_view_init(input, len), NULL, url_state_query);
   if (err < 0) return err;
 
   return 1;
@@ -1237,6 +1302,8 @@ int
 url_set_fragment (url_t *url, const utf8_t *input, size_t len) {
   int err;
 
+  if (len == (size_t) -1) len = strlen((char *) input);
+
   // TODO Empty fragment
 
   if (len == 0) {
@@ -1245,7 +1312,7 @@ url_set_fragment (url_t *url, const utf8_t *input, size_t len) {
     return 1;
   }
 
-  err = url__parse(url, input, len, NULL, url_state_fragment);
+  err = url__parse(url, utf8_string_view_init(input, len), NULL, url_state_fragment);
   if (err < 0) return err;
 
   return 1;

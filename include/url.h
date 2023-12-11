@@ -15,8 +15,12 @@ typedef uint32_t url_component_t;
 static const url_component_t url_component_unset = (url_component_t) -1;
 
 enum {
+  // https://url.spec.whatwg.org/#is-special
   url_is_special = 0x1,
-  url_has_opaque_path = 0x2,
+  // https://url.spec.whatwg.org/#include-credentials
+  url_includes_credentials = 0x2,
+  // https://url.spec.whatwg.org/#url-opaque-path
+  url_has_opaque_path = 0x4,
 };
 
 struct url_s {

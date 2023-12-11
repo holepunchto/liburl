@@ -19,5 +19,10 @@
   { \
     component = url_get_##component(&url); \
     printf("  %s = %.*s\n", #component, (int) component.len, component.data); \
-    assert(utf8_string_view_compare_literal(component, expected, -1) == 0); \
+    assert(utf8_string_view_compare_literal(component, (utf8_t *) expected, -1) == 0); \
+  }
+
+#define test_set(url, component, input) \
+  { \
+    assert(url_set_##component(&url, (utf8_t *) input, -1) == 1); \
   }

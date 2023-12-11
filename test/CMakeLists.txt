@@ -35,6 +35,8 @@ list(APPEND tests
   parse-http-scheme-username-password
   parse-http-scheme-username-password-percent-encode
   parse-http-scheme-username-percent-encode
+  set-scheme-http-to-ftp
+  set-scheme-http-to-https
 )
 
 foreach(test IN LISTS tests)
