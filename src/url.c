@@ -159,6 +159,88 @@ url__shorten_path (url_t *url) {
   url->buffer.len = url->components.path_start + i;
 }
 
+// https://url.spec.whatwg.org/#ipv4-number-parser
+static inline int
+url__parse_ipv4_number (const utf8_string_view_t input, utf8_string_t *result) {
+  return -1;
+}
+
+// https://url.spec.whatwg.org/#concept-ipv4-parser
+static inline int
+url__parse_ipv4 (const utf8_string_view_t input, utf8_string_t *result) {
+  // TODO
+
+  return -1;
+}
+
+// https://url.spec.whatwg.org/#concept-ipv6-parser
+static inline int
+url__parse_ipv6 (const utf8_string_view_t input, utf8_string_t *result) {
+  // TODO
+
+  return -1;
+}
+
+// https://url.spec.whatwg.org/#concept-opaque-host-parser
+static inline int
+url__parse_opqaue_host (const utf8_string_view_t input, utf8_string_t *result) {
+  // TODO Forbidden host code point
+
+  return url__percent_encode_string(input, url__c0_control_percent_encode_set, result);
+}
+
+// https://url.spec.whatwg.org/#ends-in-a-number-checker
+static inline bool
+url__ends_in_a_number (const utf8_string_t *string) {
+  // TODO
+
+  return false;
+}
+
+// https://url.spec.whatwg.org/#concept-host-parser
+static inline int
+url__parse_host (const utf8_string_view_t input, bool is_opaque, utf8_string_t *result) {
+  int err;
+
+  if (input.len > 0 && input.data[0] == 0x5b) {
+    if (input.data[input.len - 1] != 0x5d) return -1;
+
+    return url__parse_ipv6(utf8_string_view_substring(input, 1, input.len - 1), result);
+  }
+
+  if (is_opaque) return url__parse_opqaue_host(input, result);
+
+  assert(input.len != 0);
+
+  utf8_string_t domain;
+  err = utf8_string_init(&domain);
+  if (err < 0) goto err;
+
+  err = url__percent_decode_string(input, &domain);
+  if (err < 0) goto err;
+
+  // TODO Domain to ASCII
+
+  utf8_string_t ascii_domain = domain;
+
+  if (url__ends_in_a_number(&ascii_domain)) {
+    err = url__parse_ipv4_number(utf8_string_substring(&ascii_domain, 0, ascii_domain.len), result);
+    if (err < 0) goto err;
+  } else {
+    err = utf8_string_append(result, &ascii_domain);
+    if (err < 0) goto err;
+  }
+
+  utf8_string_destroy(&domain);
+
+  return 0;
+
+err:
+  utf8_string_destroy(&domain);
+
+  return -1;
+}
+
 void
 url_destroy (url_t *url) {
   utf8_string_destroy(&url->buffer);
@@ -642,11 +724,9 @@ url_parse (url_t *url, const utf8_t *input, size_t len, const url_t *base) {
     // https://url.spec.whatwg.org/#hostname-state
     case url_state_hostname:
       if (c == 0x3a && !inside_brackets) {
-        // TODO Host parsing
-
         url->components.host_start = url->buffer.len;
 
-        err = utf8_string_append(&url->buffer, &buffer);
+        err = url__parse_host(utf8_string_substring(&buffer, 0, buffer.len), !url__is_special(url), &url->buffer);
         if (err < 0) goto err;
 
         url->components.host_end = url->buffer.len;
@@ -662,11 +742,9 @@ url_parse (url_t *url, const utf8_t *input, size_t len, const url_t *base) {
 
         if (url__is_special(url) && utf8_string_empty(&buffer)) goto err;
 
-        // TODO Host paring
-
         url->components.host_start = url->buffer.len;
 
-        err = utf8_string_append(&url->buffer, &buffer);
+        err = url__parse_host(utf8_string_substring(&buffer, 0, buffer.len), !url__is_special(url), &url->buffer);
         if (err < 0) goto err;
 
         url->components.host_end = url->buffer.len;
@@ -814,9 +892,7 @@ url_parse (url_t *url, const utf8_t *input, size_t len, const url_t *base) {
         if (utf8_string_empty(&buffer)) {
           url->components.host_end = url->buffer.len;
         } else {
-          // TODO Host parsing
-
-          err = utf8_string_append(&url->buffer, &buffer);
+          err = url__parse_host(utf8_string_substring(&buffer, 0, buffer.len), !url__is_special(url), &url->buffer);
           if (err < 0) goto err;
 
           url->components.host_end = url->buffer.len;
@@ -939,7 +1015,7 @@ url_parse (url_t *url, const utf8_t *input, size_t len, const url_t *base) {
 
         url->components.query_start = url->buffer.len;
 
-        err = url__percent_encode_string(&buffer, *query_percent_encode_set, &url->buffer);
+        err = url__percent_encode_string(utf8_string_substring(&buffer, 0, buffer.len), *query_percent_encode_set, &url->buffer);
         if (err < 0) goto err;
 
         utf8_string_clear(&buffer);

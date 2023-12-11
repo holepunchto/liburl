@@ -4,6 +4,7 @@
 #include <utf.h>
 #include <utf/string.h>
 
+#include "infra.h"
 #include "percent-encode-set.h"
 
 // https://url.spec.whatwg.org/#percent-encode
@@ -41,6 +42,32 @@ static const utf8_t url__percent_encoded[768] =
   "%F0%F1%F2%F3%F4%F5%F6%F7"
   "%F8%F9%FA%FB%FC%FD%FE%FF";
 
+// https://url.spec.whatwg.org/#percent-decode
+static const uint8_t url__percent_decoded[256] = {
+  ['0'] = 0,
+  ['1'] = 1,
+  ['2'] = 2,
+  ['3'] = 3,
+  ['4'] = 4,
+  ['5'] = 5,
+  ['6'] = 6,
+  ['7'] = 7,
+  ['8'] = 8,
+  ['9'] = 9,
+  ['A'] = 10,
+  ['a'] = 10,
+  ['B'] = 11,
+  ['b'] = 11,
+  ['C'] = 12,
+  ['c'] = 12,
+  ['D'] = 13,
+  ['d'] = 13,
+  ['E'] = 14,
+  ['e'] = 14,
+  ['F'] = 15,
+  ['f'] = 15,
+};
+
 static inline int
 url__percent_encode_character (utf8_t character, url_percent_encode_set_t percent_encode_set, utf8_string_t *result) {
   int err;
@@ -55,23 +82,71 @@ url__percent_encode_character (utf8_t character, url_percent_encode_set_t percen
 }
 
 static inline int
-url__percent_encode_string (const utf8_string_t *string, url_percent_encode_set_t percent_encode_set, utf8_string_t *result) {
+url__percent_encode_string (const utf8_string_view_t view, url_percent_encode_set_t percent_encode_set, utf8_string_t *result) {
   int err;
 
   size_t i = 0;
 
-  for (size_t n = string->len; i < n; i++) {
-    if (url__is_in_percent_encode_set(percent_encode_set, string->data[i])) {
+  for (size_t n = view.len; i < n; i++) {
+    if (url__is_in_percent_encode_set(percent_encode_set, view.data[i])) {
       break;
     }
   }
 
-  err = utf8_string_append_view(result, utf8_string_substring(string, 0, i));
+  err = utf8_string_reserve(result, result->len + view.len);
   if (err < 0) return err;
 
-  for (size_t n = string->len; i < n; i++) {
-    err = url__percent_encode_character(string->data[i], percent_encode_set, result);
+  err = utf8_string_append_view(result, utf8_string_view_substring(view, 0, i));
+  if (err < 0) return err;
+
+  for (size_t n = view.len; i < n; i++) {
+    err = url__percent_encode_character(view.data[i], percent_encode_set, result);
     if (err < 0) return err;
+  }
+
+  return 0;
+}
+
+static inline int
+url__percent_decode_character (const utf8_t *character, utf8_string_t *result) {
+  return utf8_string_append_character(result, url__percent_decoded[character[0]] * 0x10 + url__percent_decoded[character[1]]);
+}
+
+static inline int
+url__percent_decode_string (const utf8_string_view_t view, utf8_string_t *result) {
+  int err;
+
+  size_t i = 0;
+
+  for (size_t n = view.len; i < n; i++) {
+    if (view.data[i] == 0x25) {
+      break;
+    }
+  }
+
+  err = utf8_string_reserve(result, result->len + view.len);
+  if (err < 0) return err;
+
+  err = utf8_string_append_view(result, utf8_string_view_substring(view, 0, i));
+  if (err < 0) return err;
+
+  for (size_t n = view.len; i < n; i++) {
+    utf8_t c = view.data[i];
+
+    if (
+      c == 0x25 &&
+      i < n - 2 &&
+      url__is_ascii_alphanumeric(view.data[i + 1]) &&
+      url__is_ascii_alphanumeric(view.data[i + 2])
+    ) {
+      err = url__percent_decode_character(&view.data[i + 1], result);
+      if (err < 0) return err;
+
+      i += 2;
+    } else {
+      err = utf8_string_append_character(result, c);
+      if (err < 0) return err;
+    }
   }
 
   return 0;
