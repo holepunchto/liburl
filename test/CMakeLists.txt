@@ -38,6 +38,9 @@ list(APPEND tests
   set-scheme-http-to-ftp
   set-scheme-http-to-https
   set-scheme-http-to-https-default-port
+  set-username
+  set-username-longer
+  set-username-longer-with-password
 )
 
 foreach(test IN LISTS tests)

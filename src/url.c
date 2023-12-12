@@ -5,6 +5,8 @@
 
 #include "../include/url.h"
 #include "parse.h"
+#include "percent-encode-set.h"
+#include "percent-encode.h"
 
 // https://url.spec.whatwg.org/#cannot-have-a-username-password-port
 static inline bool
@@ -79,11 +81,10 @@ url_set_scheme (url_t *url, const utf8_t *input, size_t len) {
   if (err < 0) return err;
 
   err = url__parse(url, utf8_string_substring(&string, 0, string.len), NULL, url_state_scheme_start);
-  if (err < 0) {
-    utf8_string_destroy(&string);
 
-    return err;
-  }
+  utf8_string_destroy(&string);
+
+  if (err < 0) return err;
 
   return 1;
 }
@@ -95,15 +96,57 @@ url_get_username (const url_t *url) {
 
 int
 url_set_username (url_t *url, const utf8_t *input, size_t len) {
+  int err;
+
   if (url__cannot_have_username_password_port(url)) {
     return 0;
   }
 
+  if (len == (size_t) -1) len = strlen((char *) input);
+
   // https://url.spec.whatwg.org/#set-the-username
 
-  // TODO
+  utf8_string_t percent_encoded;
+  utf8_string_init(&percent_encoded);
 
-  return 0;
+  err = url__percent_encode_string(utf8_string_view_init(input, len), url__userinfo_percent_encode_set, &percent_encoded);
+  if (err < 0) return 0;
+
+  uint32_t pos = url->components.scheme_end + 3 /* :// */;
+
+  uint32_t difference = percent_encoded.len - url->components.username_end + pos;
+
+  if (url->components.username_end == pos) {
+    err = utf8_string_append_character(&percent_encoded, '@');
+    if (err < 0) goto err;
+
+    err = utf8_string_insert(&url->href, pos, &percent_encoded);
+    if (err < 0) goto err;
+
+    url->components.username_end += difference;
+
+    difference += 1;
+  } else {
+    err = utf8_string_replace(&url->href, pos, url->components.username_end - pos, &percent_encoded);
+    if (err < 0) goto err;
+
+    url->components.username_end += difference;
+  }
+
+  url->components.host_start += difference;
+  url->components.host_end += difference;
+  url->components.path_start += difference;
+  url->components.query_start += difference;
+  url->components.fragment_start += difference;
+
+  utf8_string_destroy(&percent_encoded);
+
+  return 1;
+
+err:
+  utf8_string_destroy(&percent_encoded);
+
+  return -1;
 }
 
 utf8_string_view_t

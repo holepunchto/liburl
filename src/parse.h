@@ -14,7 +14,7 @@
 #include "percent-encode.h"
 #include "type.h"
 
-typedef enum {
+typedef enum : uint8_t {
   url_state_scheme_start = 1,
   url_state_scheme,
   url_state_no_scheme,
