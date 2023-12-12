@@ -14,17 +14,24 @@ typedef uint32_t url_component_t;
 
 static const url_component_t url_component_unset = (url_component_t) -1;
 
-enum {
-  // https://url.spec.whatwg.org/#is-special
-  url_is_special = 0x1,
-  // https://url.spec.whatwg.org/#include-credentials
-  url_includes_credentials = 0x2,
-  // https://url.spec.whatwg.org/#url-opaque-path
-  url_has_opaque_path = 0x4,
+enum : uint8_t {
+  url_has_opaque_path = 0x1,
 };
 
+typedef enum : uint8_t {
+  url_type_opaque,
+  url_type_http,
+  url_type_https,
+  url_type_ws,
+  url_type_wss,
+  url_type_ftp,
+  url_type_file,
+} url_type_t;
+
 struct url_s {
-  int flags;
+  uint8_t flags;
+
+  url_type_t type;
 
   utf8_string_t href;
 

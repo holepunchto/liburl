@@ -36,75 +36,62 @@ typedef enum {
   url_state_fragment,
 } url_state_t;
 
-// https://url.spec.whatwg.org/#default-port
-static inline uint32_t
-url__default_port (const utf8_string_view_t scheme) {
+static inline url_type_t
+url__type (const utf8_string_view_t scheme) {
   size_t len = scheme.len;
   const utf8_t *data = scheme.data;
 
   // ftp | file
   if (len >= 3 && data[0] == 'f') {
-    if (len == 3 && data[1] == 't' && data[2] == 'p') return 21;
-    return (uint32_t) -1;
+    if (len == 3 && data[1] == 't' && data[2] == 'p') return url_type_ftp;
+    if (len == 4 && data[1] == 'i' && data[2] == 'l' && data[3] == 'e') return url_type_file;
+    return url_type_opaque;
   }
 
   // http(s)
   if (len >= 4 && data[0] == 'h' && data[1] == 't' && data[2] == 't' && data[3] == 'p') {
-    if (len == 4) return 80;
-    if (len == 5 && data[4] == 's') return 443;
-    return (uint32_t) -1;
+    if (len == 4) return url_type_http;
+    if (len == 5 && data[4] == 's') return url_type_https;
+    return url_type_opaque;
   }
 
   // ws(s)
   if (len >= 2 && data[0] == 'w' && data[1] == 's') {
-    if (len == 2) return 80;
-    if (len == 3 && data[2] == 's') return 443;
-    return (uint32_t) -1;
+    if (len == 2) return url_type_ws;
+    if (len == 3 && data[2] == 's') return url_type_https;
+    return url_type_opaque;
   }
 
-  return (uint32_t) -1;
+  return url_type_opaque;
 }
 
-// https://url.spec.whatwg.org/#special-scheme
-static inline bool
-url__is_special_scheme (const utf8_string_view_t scheme) {
-  size_t len = scheme.len;
-  const utf8_t *data = scheme.data;
-
-  // ftp | file
-  if (len >= 3 && data[0] == 'f') {
-    if (len == 3) return data[1] == 't' && data[2] == 'p';
-    if (len == 4) return data[1] == 'i' && data[2] == 'l' && data[3] == 'e';
-    return false;
+// https://url.spec.whatwg.org/#default-port
+static inline uint32_t
+url__default_port (url_type_t type) {
+  switch (type) {
+  case url_type_ftp:
+    return 21;
+  case url_type_http:
+  case url_type_ws:
+    return 80;
+  case url_type_https:
+  case url_type_wss:
+    return 443;
+  default:
+    return (uint32_t) -1;
   }
-
-  // http(s)
-  if (len >= 4 && data[0] == 'h' && data[1] == 't' && data[2] == 't' && data[3] == 'p') {
-    if (len == 4) return true;
-    if (len == 5) return data[4] == 's';
-    return false;
-  }
-
-  // ws(s)
-  if (len >= 2 && data[0] == 'w' && data[1] == 's') {
-    if (len == 2) return true;
-    if (len == 3) return data[2] == 's';
-    return false;
-  }
-
-  return false;
 }
 
 // https://url.spec.whatwg.org/#is-special
 static inline bool
 url__is_special (const url_t *url) {
-  return (url->flags & url_is_special) != 0;
+  return url->type != url_type_opaque;
 }
 
 // https://url.spec.whatwg.org/#include-credentials
 static inline bool
 url__includes_credentials (const url_t *url) {
-  return (url->flags & url_includes_credentials) != 0;
+  return !utf8_string_view_empty(url_get_username(url));
 }
 
 // https://url.spec.whatwg.org/#url-opaque-path
@@ -116,7 +103,7 @@ url__has_opaque_path (const url_t *url) {
 // https://url.spec.whatwg.org/#cannot-have-a-username-password-port
 static inline bool
 url__cannot_have_username_password_port (const url_t *url) {
-  return utf8_string_view_empty(url_get_host(url)) || utf8_string_view_compare_literal(url_get_scheme(url), (utf8_t *) "file", 4);
+  return utf8_string_view_empty(url_get_host(url)) || url->type == url_type_file;
 }
 
 // https://url.spec.whatwg.org/#shorten-a-urls-path
@@ -264,6 +251,7 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
 
   if (state_override == 0) {
     url->flags = 0;
+    url->type = url_type_opaque;
 
     url->components.scheme_end = 0;
     url->components.username_end = 0;
@@ -309,20 +297,22 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
         err = utf8_string_append_character(&buffer, url__to_ascii_lowercase(c));
         if (err < 0) goto err;
       } else if (c == 0x3a) {
-        if (state_override) {
-          utf8_string_view_t scheme = url_get_scheme(url);
+        url_type_t type = url__type(utf8_string_substring(&buffer, 0, buffer.len));
 
-          if (url__is_special(url) != url__is_special_scheme(utf8_string_substring(&buffer, 0, buffer.len))) {
+        bool is_special = type != url_type_opaque;
+
+        if (state_override) {
+          if (url__is_special(url) != is_special) {
             goto done;
           }
 
           if (url__includes_credentials(url) || url->components.port != url_component_unset) {
-            if (utf8_string_compare_literal(&buffer, (utf8_t *) "file", 4) == 0) {
+            if (url->type == url_type_file) {
               goto done;
             }
           }
 
-          if (utf8_string_view_compare_literal(url_get_scheme(url), (utf8_t *) "file", 4) == 0 && utf8_string_view_empty(url_get_host(url))) {
+          if (url->type == url_type_file && utf8_string_view_empty(url_get_host(url))) {
             goto done;
           }
 
@@ -330,6 +320,8 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
 
           err = utf8_string_replace(&url->href, 0, url->components.scheme_end, &buffer);
           if (err < 0) goto err;
+
+          url->type = type;
 
           url->components.scheme_end += difference;
           url->components.username_end += difference;
@@ -345,7 +337,7 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
             url->components.fragment_start += difference;
           }
 
-          uint32_t default_port = url__default_port(url_get_scheme(url));
+          uint32_t default_port = url__default_port(type);
 
           if (url->components.port == default_port) {
             url->components.port = (uint32_t) -1;
@@ -366,18 +358,16 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
         err = utf8_string_append(&url->href, &buffer);
         if (err < 0) goto err;
 
+        url->type = type;
+
         url->components.scheme_end = url->href.len;
-
-        utf8_string_view_t scheme = url_get_scheme(url);
-
-        if (url__is_special_scheme(scheme)) url->flags |= url_is_special;
 
         err = utf8_string_append_character(&url->href, ':');
         if (err < 0) goto err;
 
         utf8_string_clear(&buffer);
 
-        if (utf8_string_view_compare_literal(url_get_scheme(url), (utf8_t *) "file", 4) == 0) {
+        if (url->type == url_type_file) {
           err = utf8_string_append_literal(&url->href, (utf8_t *) "//", 2);
           if (err < 0) goto err;
 
@@ -385,7 +375,7 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
 
           state = url_state_file;
         } else if (url__is_special(url)) {
-          if (base != NULL && utf8_string_view_compare(url_get_scheme(url), url_get_scheme(base)) == 0) {
+          if (base != NULL && url->type == base->type) {
             assert(url__is_special(base));
 
             state = url_state_special_relative_or_authority;
@@ -427,10 +417,9 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
         err = utf8_string_append_view(&url->href, url_get_scheme(base));
         if (err < 0) goto err;
 
+        url->type = base->type;
+
         url->components.scheme_end = url->href.len;
-
-        if (url__is_special(base)) url->flags |= url_is_special;
-
         url->components.host_start = url->href.len;
         url->components.host_end = url->href.len;
         url->components.username_end = url->href.len;
@@ -463,16 +452,16 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
         url->components.fragment_start = url->href.len;
 
         state = url_state_fragment;
-      } else if (utf8_string_view_compare_literal(url_get_scheme(base), (utf8_t *) "file", 4) != 0) {
+      } else if (base->type != url_type_file) {
         state = url_state_relative;
         pointer--;
       } else {
         err = utf8_string_append_literal(&url->href, (utf8_t *) "file", 4);
         if (err < 0) goto err;
 
-        url->components.scheme_end = url->href.len;
+        url->type = url_type_file;
 
-        url->flags |= url_is_special;
+        url->components.scheme_end = url->href.len;
 
         err = utf8_string_append_literal(&url->href, (utf8_t *) "://", 3);
         if (err < 0) goto err;
@@ -522,15 +511,15 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
 
     // https://url.spec.whatwg.org/#relative-state
     case url_state_relative:
-      assert(utf8_string_view_compare_literal(url_get_scheme(base), (utf8_t *) "file", 4) != 0);
+      assert(base->type != url_type_file);
 
       if (url->components.scheme_end == 0) {
         err = utf8_string_append_view(&url->href, url_get_scheme(base));
         if (err < 0) goto err;
 
-        url->components.scheme_end = url->href.len;
+        url->type = base->type;
 
-        if (url__is_special(base)) url->flags |= url_is_special;
+        url->components.scheme_end = url->href.len;
 
         err = utf8_string_append_character(&url->href, ':');
         if (err < 0) goto err;
@@ -847,7 +836,7 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
 
           if (port > UINT16_MAX) goto err;
 
-          uint32_t default_port = url__default_port(url_get_scheme(url));
+          uint32_t default_port = url__default_port(url->type);
 
           if (port == default_port) {
             url->components.port = (uint32_t) -1;
@@ -875,7 +864,7 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
     case url_state_file:
       if (c == 0x2f || c == 0x5c) {
         state = url_state_file_slash;
-      } else if (base != NULL && utf8_string_view_compare_literal(url_get_scheme(base), (utf8_t *) "file", 4) == 0) {
+      } else if (base != NULL && base->type == url_type_file) {
         url->components.host_start = url->href.len;
 
         err = utf8_string_append_view(&url->href, url_get_host(base));
@@ -932,7 +921,7 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
       if (c == 0x2f || c == 0x5c) {
         state = url_state_file_host;
       } else {
-        if (base != NULL && utf8_string_view_compare_literal(url_get_scheme(base), (utf8_t *) "file", 4) == 0) {
+        if (base != NULL && base->type == url_type_file) {
           url->components.host_start = url->href.len;
 
           err = utf8_string_append_view(&url->href, url_get_host(base));

@@ -11,7 +11,7 @@ add_library(url OBJECT)
 set_target_properties(
   url
   PROPERTIES
-  C_STANDARD 99
+  C_STANDARD 11
   POSITION_INDEPENDENT_CODE ON
 )
 
@@ -21,6 +21,7 @@ target_sources(
     include/url.h
   PRIVATE
     src/infra.h
+    src/percent-encode.h
     src/percent-encode-set.h
     src/url.c
 )
