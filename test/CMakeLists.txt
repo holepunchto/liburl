@@ -45,6 +45,11 @@ list(APPEND tests
   set-password
   set-password-longer
   set-password-shorter
+  set-port
+  set-port-default
+  set-port-empty
+  set-port-longer
+  set-port-shorter
   set-scheme-http-to-ftp
   set-scheme-http-to-https
   set-scheme-http-to-https-default-port

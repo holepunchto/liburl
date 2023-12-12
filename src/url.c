@@ -258,9 +258,18 @@ url_set_port (url_t *url, const utf8_t *input, size_t len) {
   if (len == (size_t) -1) len = strlen((char *) input);
 
   if (len == 0) {
+    size_t pos = url->components.host_end;
+
+    uint32_t difference = pos - url->components.path_start;
+
+    err = utf8_string_erase(&url->href, pos, url->components.path_start - pos);
+    assert(err == 0);
+
     url->components.port = url_component_unset;
 
-    // TODO Adjust offsets
+    url->components.path_start += difference;
+    url->components.query_start += difference;
+    url->components.fragment_start += difference;
   } else {
     err = url__parse(url, utf8_string_view_init(input, len), NULL, url_state_port);
     if (err < 0) return err;
