@@ -265,8 +265,14 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
             assert(err == 0);
 
             url->components.path_start -= len;
-            url->components.query_start -= len;
-            url->components.fragment_start -= len;
+
+            if (url->components.query_start != url_component_unset) {
+              url->components.query_start -= len;
+            }
+
+            if (url->components.fragment_start != url_component_unset) {
+              url->components.fragment_start -= len;
+            }
           }
 
           goto done;
@@ -728,8 +734,14 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
 
           url->components.host_end += difference;
           url->components.path_start += difference;
-          url->components.query_start += difference;
-          url->components.fragment_start += difference;
+
+          if (url->components.query_start != url_component_unset) {
+            url->components.query_start += difference;
+          }
+
+          if (url->components.fragment_start != url_component_unset) {
+            url->components.fragment_start += difference;
+          }
         } else {
           uint32_t host_start = url->href.len;
 
@@ -780,8 +792,14 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
 
           url->components.host_end += difference;
           url->components.path_start += difference;
-          url->components.query_start += difference;
-          url->components.fragment_start += difference;
+
+          if (url->components.query_start != url_component_unset) {
+            url->components.query_start += difference;
+          }
+
+          if (url->components.fragment_start != url_component_unset) {
+            url->components.fragment_start += difference;
+          }
         } else {
           uint32_t host_start = url->href.len;
 
@@ -838,8 +856,14 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
               assert(err == 0);
 
               url->components.path_start += difference;
-              url->components.query_start += difference;
-              url->components.fragment_start += difference;
+
+              if (url->components.query_start != url_component_unset) {
+                url->components.query_start += difference;
+              }
+
+              if (url->components.fragment_start != url_component_unset) {
+                url->components.fragment_start += difference;
+              }
             }
           } else if (state_override) {
             uint32_t difference;
@@ -866,8 +890,14 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
             url->components.port = port;
 
             url->components.path_start += difference;
-            url->components.query_start += difference;
-            url->components.fragment_start += difference;
+
+            if (url->components.query_start != url_component_unset) {
+              url->components.query_start += difference;
+            }
+
+            if (url->components.fragment_start != url_component_unset) {
+              url->components.fragment_start += difference;
+            }
           } else {
             err = utf8_string_append_character(&url->href, ':');
             if (err < 0) goto err;

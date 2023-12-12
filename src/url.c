@@ -136,8 +136,14 @@ url_set_username (url_t *url, const utf8_t *input, size_t len) {
   url->components.host_start += difference;
   url->components.host_end += difference;
   url->components.path_start += difference;
-  url->components.query_start += difference;
-  url->components.fragment_start += difference;
+
+  if (url->components.query_start != url_component_unset) {
+    url->components.query_start += difference;
+  }
+
+  if (url->components.fragment_start != url_component_unset) {
+    url->components.fragment_start += difference;
+  }
 
   utf8_string_destroy(&percent_encoded);
 
@@ -192,8 +198,14 @@ url_set_password (url_t *url, const utf8_t *input, size_t len) {
   url->components.host_start += difference;
   url->components.host_end += difference;
   url->components.path_start += difference;
-  url->components.query_start += difference;
-  url->components.fragment_start += difference;
+
+  if (url->components.query_start != url_component_unset) {
+    url->components.query_start += difference;
+  }
+
+  if (url->components.fragment_start != url_component_unset) {
+    url->components.fragment_start += difference;
+  }
 
   utf8_string_destroy(&percent_encoded);
 
@@ -268,8 +280,14 @@ url_set_port (url_t *url, const utf8_t *input, size_t len) {
     url->components.port = url_component_unset;
 
     url->components.path_start += difference;
-    url->components.query_start += difference;
-    url->components.fragment_start += difference;
+
+    if (url->components.query_start != url_component_unset) {
+      url->components.query_start += difference;
+    }
+
+    if (url->components.fragment_start != url_component_unset) {
+      url->components.fragment_start += difference;
+    }
   } else {
     err = url__parse(url, utf8_string_view_init(input, len), NULL, url_state_port);
     if (err < 0) return err;
