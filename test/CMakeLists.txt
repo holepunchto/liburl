@@ -37,6 +37,10 @@ list(APPEND tests
   parse-http-scheme-username-percent-encode
   set-host
   set-host-shorter
+  set-host-port
+  set-host-port-default
+  set-host-port-longer
+  set-host-port-shorter
   set-host-longer
   set-password
   set-password-longer

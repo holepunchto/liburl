@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <utf.h>
 #include <utf/string.h>
 
@@ -704,13 +705,40 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
 
         if (state_override == url_state_hostname) goto done;
 
-        uint32_t host_start = url->href.len;
+        if (state_override) {
+          utf8_string_t host;
+          utf8_string_init(&host);
 
-        err = url__parse_host(utf8_string_substring(&buffer, 0, buffer.len), !url__is_special(url), &url->href);
-        if (err < 0) goto err;
+          err = url__parse_host(utf8_string_substring(&buffer, 0, buffer.len), !url__is_special(url), &host);
+          if (err < 0) {
+            utf8_string_destroy(&host);
 
-        url->components.host_start = host_start;
-        url->components.host_end = url->href.len;
+            goto err;
+          }
+
+          uint32_t pos = url->components.host_start;
+
+          uint32_t difference = host.len - url->components.host_end + pos;
+
+          err = utf8_string_replace(&url->href, pos, url->components.host_end - pos, &host);
+
+          utf8_string_destroy(&host);
+
+          if (err < 0) goto err;
+
+          url->components.host_end += difference;
+          url->components.path_start += difference;
+          url->components.query_start += difference;
+          url->components.fragment_start += difference;
+        } else {
+          uint32_t host_start = url->href.len;
+
+          err = url__parse_host(utf8_string_substring(&buffer, 0, buffer.len), !url__is_special(url), &url->href);
+          if (err < 0) goto err;
+
+          url->components.host_start = host_start;
+          url->components.host_end = url->href.len;
+        }
 
         utf8_string_clear(&buffer);
 
@@ -754,21 +782,21 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
           url->components.path_start += difference;
           url->components.query_start += difference;
           url->components.fragment_start += difference;
+        } else {
+          uint32_t host_start = url->href.len;
 
-          goto done;
+          err = url__parse_host(utf8_string_substring(&buffer, 0, buffer.len), !url__is_special(url), &url->href);
+          if (err < 0) goto err;
+
+          url->components.host_start = host_start;
+          url->components.host_end = url->href.len;
         }
-
-        uint32_t host_start = url->href.len;
-
-        err = url__parse_host(utf8_string_substring(&buffer, 0, buffer.len), !url__is_special(url), &url->href);
-        if (err < 0) goto err;
-
-        url->components.host_start = host_start;
-        url->components.host_end = url->href.len;
 
         utf8_string_clear(&buffer);
 
         state = url_state_path_start;
+
+        if (state_override) goto done;
       } else {
         if (c == 0x5b) inside_brackets = true;
         else if (c == 0x5d) inside_brackets = false;
@@ -800,6 +828,46 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
 
           if (port == default_port) {
             url->components.port = (uint32_t) -1;
+
+            if (state_override) {
+              size_t pos = url->components.host_end;
+
+              uint32_t difference = pos - url->components.path_start;
+
+              err = utf8_string_erase(&url->href, pos, url->components.path_start - pos);
+              assert(err == 0);
+
+              url->components.path_start += difference;
+              url->components.query_start += difference;
+              url->components.fragment_start += difference;
+            }
+          } else if (state_override) {
+            uint32_t difference;
+
+            if (url->components.port == url_component_unset) {
+              err = utf8_string_prepend_character(&buffer, ':');
+              if (err < 0) goto err;
+
+              size_t pos = url->components.host_end;
+
+              difference = buffer.len;
+
+              err = utf8_string_insert(&url->href, pos, &buffer);
+              if (err < 0) goto err;
+            } else {
+              size_t pos = url->components.host_end + 1 /* : */;
+
+              difference = buffer.len - url->components.path_start + pos;
+
+              err = utf8_string_replace(&url->href, pos, url->components.path_start - pos, &buffer);
+              if (err < 0) goto err;
+            }
+
+            url->components.port = port;
+
+            url->components.path_start += difference;
+            url->components.query_start += difference;
+            url->components.fragment_start += difference;
           } else {
             err = utf8_string_append_character(&url->href, ':');
             if (err < 0) goto err;
@@ -812,6 +880,8 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
 
           utf8_string_clear(&buffer);
         }
+
+        if (state_override) goto done;
 
         state = url_state_path_start;
         pointer--;
