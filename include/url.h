@@ -60,6 +60,9 @@ struct url_s {
 };
 
 void
+url_init (url_t *url);
+
+void
 url_destroy (url_t *url);
 
 int

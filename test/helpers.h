@@ -8,6 +8,7 @@
 #define test_parse(url, input, base) \
   url_t url; \
   { \
+    url_init(&url); \
     int e = url_parse(&url, (utf8_t *) input, -1, base); \
     assert(e == 0); \
     utf8_string_view_t href = url_get_href(&url); \

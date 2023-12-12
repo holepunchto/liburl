@@ -249,22 +249,6 @@ static inline int
 url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_state_t state_override) {
   int err;
 
-  if (state_override == 0) {
-    url->flags = 0;
-    url->type = url_type_opaque;
-
-    url->components.scheme_end = 0;
-    url->components.username_end = 0;
-    url->components.host_start = 0;
-    url->components.host_end = 0;
-    url->components.port = url_component_unset;
-    url->components.path_start = 0;
-    url->components.query_start = url_component_unset;
-    url->components.fragment_start = url_component_unset;
-
-    utf8_string_init(&url->href);
-  }
-
   url_state_t state = state_override || url_state_scheme_start;
 
   utf8_string_t buffer;
@@ -1114,6 +1098,23 @@ err:
   url_destroy(url);
 
   return -1;
+}
+
+void
+url_init (url_t *url) {
+  url->flags = 0;
+  url->type = url_type_opaque;
+
+  url->components.scheme_end = 0;
+  url->components.username_end = 0;
+  url->components.host_start = 0;
+  url->components.host_end = 0;
+  url->components.port = url_component_unset;
+  url->components.path_start = 0;
+  url->components.query_start = url_component_unset;
+  url->components.fragment_start = url_component_unset;
+
+  utf8_string_init(&url->href);
 }
 
 void
