@@ -116,7 +116,7 @@ url_set_username (url_t *url, const utf8_t *input, size_t len) {
 
   uint32_t difference = percent_encoded.len - url->components.username_end + pos;
 
-  if (url->components.username_end == pos) {
+  if (url->components.username_end <= pos) {
     err = utf8_string_append_character(&percent_encoded, '@');
     if (err < 0) goto err;
 
@@ -156,15 +156,53 @@ url_get_password (const url_t *url) {
 
 int
 url_set_password (url_t *url, const utf8_t *input, size_t len) {
+  int err;
+
   if (url__cannot_have_credentials_or_port(url)) {
     return 0;
   }
 
+  if (len == (size_t) -1) len = strlen((char *) input);
+
   // https://url.spec.whatwg.org/#set-the-password
 
-  // TODO
+  utf8_string_t percent_encoded;
+  utf8_string_init(&percent_encoded);
 
-  return 0;
+  err = url__percent_encode_string(utf8_string_view_init(input, len), url__userinfo_percent_encode_set, &percent_encoded);
+  if (err < 0) return 0;
+
+  uint32_t pos = url->components.username_end + 1 /* : */;
+
+  uint32_t difference = percent_encoded.len - url->components.host_start + 1 /* @ */ + pos;
+
+  if (url->components.host_start - 1 /* @ */ <= pos) {
+    pos -= 1;
+
+    err = utf8_string_prepend_character(&percent_encoded, ':');
+    if (err < 0) goto err;
+
+    err = utf8_string_insert(&url->href, pos, &percent_encoded);
+    if (err < 0) goto err;
+  } else {
+    err = utf8_string_replace(&url->href, pos, url->components.host_start - 1 /* @ */ - pos, &percent_encoded);
+    if (err < 0) goto err;
+  }
+
+  url->components.host_start += difference;
+  url->components.host_end += difference;
+  url->components.path_start += difference;
+  url->components.query_start += difference;
+  url->components.fragment_start += difference;
+
+  utf8_string_destroy(&percent_encoded);
+
+  return 1;
+
+err:
+  utf8_string_destroy(&percent_encoded);
+
+  return -1;
 }
 
 utf8_string_view_t

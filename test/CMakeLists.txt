@@ -35,6 +35,9 @@ list(APPEND tests
   parse-http-scheme-username-password
   parse-http-scheme-username-password-percent-encode
   parse-http-scheme-username-percent-encode
+  set-password
+  set-password-longer
+  set-password-shorter
   set-scheme-http-to-ftp
   set-scheme-http-to-https
   set-scheme-http-to-https-default-port
