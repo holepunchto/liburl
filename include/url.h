@@ -26,7 +26,7 @@ enum {
 struct url_s {
   int flags;
 
-  utf8_string_t buffer;
+  utf8_string_t href;
 
   /**
    * https://user:pass@example.com:1234/foo/bar?baz#quux
