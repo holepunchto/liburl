@@ -177,7 +177,7 @@ err:
   return -1;
 }
 
-static inline int
+static int
 url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_state_t state_override) {
   int err;
 
