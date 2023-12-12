@@ -35,31 +35,6 @@ list(APPEND tests
   parse-http-scheme-username-password
   parse-http-scheme-username-password-percent-encode
   parse-http-scheme-username-percent-encode
-  set-host
-  set-host-shorter
-  set-host-port
-  set-host-port-default
-  set-host-port-longer
-  set-host-port-shorter
-  set-host-longer
-  set-password
-  set-password-longer
-  set-password-shorter
-  set-path
-  set-path-empty
-  set-port
-  set-port-default
-  set-port-empty
-  set-port-longer
-  set-port-shorter
-  set-scheme-http-to-ftp
-  set-scheme-http-to-https
-  set-scheme-http-to-https-default-port
-  set-username
-  set-username-longer
-  set-username-longer-with-password
-  set-username-shorter
-  set-username-shorter-with-password
 )
 
 foreach(test IN LISTS tests)
