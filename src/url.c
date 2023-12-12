@@ -218,7 +218,25 @@ url_set_host (url_t *url, const utf8_t *input, size_t len) {
     return 0;
   }
 
+  if (len == (size_t) -1) len = strlen((char *) input);
+
   err = url__parse(url, utf8_string_view_init(input, len), NULL, url_state_host);
+  if (err < 0) return err;
+
+  return 1;
+}
+
+int
+url_set_hostname (url_t *url, const utf8_t *input, size_t len) {
+  int err;
+
+  if (url->flags & url_has_opaque_path) {
+    return 0;
+  }
+
+  if (len == (size_t) -1) len = strlen((char *) input);
+
+  err = url__parse(url, utf8_string_view_init(input, len), NULL, url_state_hostname);
   if (err < 0) return err;
 
   return 1;
@@ -263,6 +281,8 @@ url_set_path (url_t *url, const utf8_t *input, size_t len) {
   if (url->flags & url_has_opaque_path) {
     return 0;
   }
+
+  if (len == (size_t) -1) len = strlen((char *) input);
 
   // TODO Empty path
 

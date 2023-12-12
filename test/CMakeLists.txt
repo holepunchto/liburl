@@ -35,6 +35,9 @@ list(APPEND tests
   parse-http-scheme-username-password
   parse-http-scheme-username-password-percent-encode
   parse-http-scheme-username-percent-encode
+  set-host
+  set-host-shorter
+  set-host-longer
   set-password
   set-password-longer
   set-password-shorter

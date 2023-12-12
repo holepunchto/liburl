@@ -103,6 +103,9 @@ url_get_host (const url_t *url);
 int
 url_set_host (url_t *url, const utf8_t *input, size_t len);
 
+int
+url_set_hostname (url_t *url, const utf8_t *input, size_t len);
+
 utf8_string_view_t
 url_get_port (const url_t *url);
 
