@@ -6,6 +6,12 @@
 #include "../include/url.h"
 #include "parse.h"
 
+// https://url.spec.whatwg.org/#cannot-have-a-username-password-port
+static inline bool
+url__cannot_have_username_password_port (const url_t *url) {
+  return utf8_string_view_empty(url_get_host(url)) || url->type == url_type_file;
+}
+
 void
 url_init (url_t *url) {
   url->flags = 0;
@@ -127,7 +133,7 @@ int
 url_set_host (url_t *url, const utf8_t *input, size_t len) {
   int err;
 
-  if (url__has_opaque_path(url)) {
+  if (url->flags & url_has_opaque_path) {
     return 0;
   }
 
@@ -173,7 +179,7 @@ int
 url_set_path (url_t *url, const utf8_t *input, size_t len) {
   int err;
 
-  if (url__has_opaque_path(url)) {
+  if (url->flags & url_has_opaque_path) {
     return 0;
   }
 

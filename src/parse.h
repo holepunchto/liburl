@@ -12,6 +12,7 @@
 #include "infra.h"
 #include "percent-encode-set.h"
 #include "percent-encode.h"
+#include "type.h"
 
 typedef enum {
   url_state_scheme_start = 1,
@@ -36,76 +37,6 @@ typedef enum {
   url_state_query,
   url_state_fragment,
 } url_state_t;
-
-static inline url_type_t
-url__type (const utf8_string_view_t scheme) {
-  size_t len = scheme.len;
-  const utf8_t *data = scheme.data;
-
-  // ftp | file
-  if (len >= 3 && data[0] == 'f') {
-    if (len == 3 && data[1] == 't' && data[2] == 'p') return url_type_ftp;
-    if (len == 4 && data[1] == 'i' && data[2] == 'l' && data[3] == 'e') return url_type_file;
-    return url_type_opaque;
-  }
-
-  // http(s)
-  if (len >= 4 && data[0] == 'h' && data[1] == 't' && data[2] == 't' && data[3] == 'p') {
-    if (len == 4) return url_type_http;
-    if (len == 5 && data[4] == 's') return url_type_https;
-    return url_type_opaque;
-  }
-
-  // ws(s)
-  if (len >= 2 && data[0] == 'w' && data[1] == 's') {
-    if (len == 2) return url_type_ws;
-    if (len == 3 && data[2] == 's') return url_type_https;
-    return url_type_opaque;
-  }
-
-  return url_type_opaque;
-}
-
-// https://url.spec.whatwg.org/#default-port
-static inline uint32_t
-url__default_port (url_type_t type) {
-  switch (type) {
-  case url_type_ftp:
-    return 21;
-  case url_type_http:
-  case url_type_ws:
-    return 80;
-  case url_type_https:
-  case url_type_wss:
-    return 443;
-  default:
-    return (uint32_t) -1;
-  }
-}
-
-// https://url.spec.whatwg.org/#is-special
-static inline bool
-url__is_special (const url_t *url) {
-  return url->type != url_type_opaque;
-}
-
-// https://url.spec.whatwg.org/#include-credentials
-static inline bool
-url__includes_credentials (const url_t *url) {
-  return !utf8_string_view_empty(url_get_username(url));
-}
-
-// https://url.spec.whatwg.org/#url-opaque-path
-static inline bool
-url__has_opaque_path (const url_t *url) {
-  return (url->flags & url_has_opaque_path) != 0;
-}
-
-// https://url.spec.whatwg.org/#cannot-have-a-username-password-port
-static inline bool
-url__cannot_have_username_password_port (const url_t *url) {
-  return utf8_string_view_empty(url_get_host(url)) || url->type == url_type_file;
-}
 
 // https://url.spec.whatwg.org/#shorten-a-urls-path
 static inline void
@@ -291,7 +222,7 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
             goto done;
           }
 
-          if (url__includes_credentials(url) || url->components.port != url_component_unset) {
+          if (!utf8_string_view_empty(url_get_username(url)) || url->components.port != url_component_unset) {
             if (url->type == url_type_file) {
               goto done;
             }
@@ -396,7 +327,7 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
     case url_state_no_scheme:
       if (base == NULL) goto err;
 
-      if (url__has_opaque_path(base)) {
+      if (base->flags & url_has_opaque_path) {
         if (c != 0x23) goto err;
 
         err = utf8_string_append_view(&url->href, url_get_scheme(base));

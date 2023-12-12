@@ -24,6 +24,7 @@ target_sources(
     src/parse.h
     src/percent-encode.h
     src/percent-encode-set.h
+    src/type.h
     src/url.c
 )
 
