@@ -345,6 +345,21 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
             url->components.fragment_start += difference;
           }
 
+          uint32_t default_port = url__default_port(url_get_scheme(url));
+
+          if (url->components.port == default_port) {
+            url->components.port = (uint32_t) -1;
+
+            size_t len = url->components.path_start - url->components.host_end;
+
+            err = utf8_string_erase(&url->buffer, url->components.host_end, len);
+            assert(err == 0);
+
+            url->components.path_start -= len;
+            url->components.query_start -= len;
+            url->components.fragment_start -= len;
+          }
+
           goto done;
         }
 

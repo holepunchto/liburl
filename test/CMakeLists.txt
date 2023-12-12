@@ -37,6 +37,7 @@ list(APPEND tests
   parse-http-scheme-username-percent-encode
   set-scheme-http-to-ftp
   set-scheme-http-to-https
+  set-scheme-http-to-https-default-port
 )
 
 foreach(test IN LISTS tests)
