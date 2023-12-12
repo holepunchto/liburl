@@ -93,6 +93,8 @@ url__percent_encode_string (const utf8_string_view_t view, url_percent_encode_se
     }
   }
 
+  if (i == view.len) return utf8_string_append_view(result, view);
+
   err = utf8_string_reserve(result, result->len + view.len);
   if (err < 0) return err;
 

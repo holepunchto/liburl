@@ -1104,11 +1104,13 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
 
     // https://url.spec.whatwg.org/#fragment-state
     case url_state_fragment:
-      if (c != -1) {
-        err = url__percent_encode_character(c, url__fragment_percent_encode_set, &url->href);
-        if (err < 0) goto err;
-      }
-      break;
+      // Optimization: The fragment is everything from the current position
+      // until the end of the string.
+
+      err = url__percent_encode_string(utf8_string_view_substring(input, pointer, input.len), url__fragment_percent_encode_set, &url->href);
+      if (err < 0) goto err;
+
+      goto done;
     }
   }
 
@@ -1146,6 +1148,8 @@ int
 url_set_href (url_t *url, const utf8_t *input, size_t len) {
   int err;
 
+  if (len == (size_t) -1) len = strlen((char *) input);
+
   url_t parsed_url;
   err = url__parse(&parsed_url, utf8_string_view_init(input, len), NULL, 0);
   if (err < 0) return err;
@@ -1165,6 +1169,8 @@ url_get_scheme (const url_t *url) {
 int
 url_set_scheme (url_t *url, const utf8_t *input, size_t len) {
   int err;
+
+  if (len == (size_t) -1) len = strlen((char *) input);
 
   utf8_string_t string;
   err = utf8_string_view_concat_character(utf8_string_view_init(input, len), ':', &string);
