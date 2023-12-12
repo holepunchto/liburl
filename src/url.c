@@ -258,7 +258,7 @@ url_set_port (url_t *url, const utf8_t *input, size_t len) {
   if (len == (size_t) -1) len = strlen((char *) input);
 
   if (len == 0) {
-    size_t pos = url->components.host_end;
+    uint32_t pos = url->components.host_end;
 
     uint32_t difference = pos - url->components.path_start;
 

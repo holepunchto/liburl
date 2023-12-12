@@ -830,7 +830,7 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
             url->components.port = (uint32_t) -1;
 
             if (state_override) {
-              size_t pos = url->components.host_end;
+              uint32_t pos = url->components.host_end;
 
               uint32_t difference = pos - url->components.path_start;
 
@@ -848,14 +848,14 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
               err = utf8_string_prepend_character(&buffer, ':');
               if (err < 0) goto err;
 
-              size_t pos = url->components.host_end;
+              uint32_t pos = url->components.host_end;
 
               difference = buffer.len;
 
               err = utf8_string_insert(&url->href, pos, &buffer);
               if (err < 0) goto err;
             } else {
-              size_t pos = url->components.host_end + 1 /* : */;
+              uint32_t pos = url->components.host_end + 1 /* : */;
 
               difference = buffer.len - url->components.path_start + pos;
 
