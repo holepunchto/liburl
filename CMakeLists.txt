@@ -21,6 +21,7 @@ target_sources(
     include/url.h
   PRIVATE
     src/infra.h
+    src/parse.h
     src/percent-encode.h
     src/percent-encode-set.h
     src/url.c

@@ -1,6 +1,8 @@
 #ifndef URL_PERCENT_ENCODE
 #define URL_PERCENT_ENCODE
 
+#include <stddef.h>
+#include <stdint.h>
 #include <utf.h>
 #include <utf/string.h>
 
