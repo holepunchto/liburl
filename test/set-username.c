@@ -3,9 +3,9 @@
 
 int
 main () {
-  test_parse(url, "http://example.com:1234/foo/bar?baz#quux", NULL);
+  test_parse(url, "http://user@example.com:1234/foo/bar?baz#quux", NULL);
 
-  test_set(url, username, u8"username");
+  test_set(url, username, "username");
 
   test_get(url, href, "http://username@example.com:1234/foo/bar?baz#quux");
   test_get(url, scheme, "http");
