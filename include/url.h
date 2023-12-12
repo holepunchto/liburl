@@ -33,6 +33,11 @@ struct url_s {
 
   url_type_t type;
 
+  /**
+   * The normalized serialization of the URL. This is used as the canonical
+   * representation to both minimize memory allocation and also provide fast,
+   * immutable views over the various URL components.
+   */
   utf8_string_t href;
 
   /**

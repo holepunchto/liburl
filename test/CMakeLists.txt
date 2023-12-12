@@ -41,6 +41,8 @@ list(APPEND tests
   set-username
   set-username-longer
   set-username-longer-with-password
+  set-username-shorter
+  set-username-shorter-with-password
 )
 
 foreach(test IN LISTS tests)

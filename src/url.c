@@ -10,7 +10,7 @@
 
 // https://url.spec.whatwg.org/#cannot-have-a-username-password-port
 static inline bool
-url__cannot_have_username_password_port (const url_t *url) {
+url__cannot_have_credentials_or_port (const url_t *url) {
   return utf8_string_view_empty(url_get_host(url)) || url->type == url_type_file;
 }
 
@@ -98,7 +98,7 @@ int
 url_set_username (url_t *url, const utf8_t *input, size_t len) {
   int err;
 
-  if (url__cannot_have_username_password_port(url)) {
+  if (url__cannot_have_credentials_or_port(url)) {
     return 0;
   }
 
@@ -156,7 +156,7 @@ url_get_password (const url_t *url) {
 
 int
 url_set_password (url_t *url, const utf8_t *input, size_t len) {
-  if (url__cannot_have_username_password_port(url)) {
+  if (url__cannot_have_credentials_or_port(url)) {
     return 0;
   }
 
@@ -195,7 +195,7 @@ int
 url_set_port (url_t *url, const utf8_t *input, size_t len) {
   int err;
 
-  if (url__cannot_have_username_password_port(url)) {
+  if (url__cannot_have_credentials_or_port(url)) {
     return 0;
   }
 
