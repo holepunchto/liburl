@@ -45,6 +45,8 @@ list(APPEND tests
   set-password
   set-password-longer
   set-password-shorter
+  set-path
+  set-path-empty
   set-port
   set-port-default
   set-port-empty

@@ -311,7 +311,26 @@ url_set_path (url_t *url, const utf8_t *input, size_t len) {
 
   if (len == (size_t) -1) len = strlen((char *) input);
 
-  // TODO Empty path
+  uint32_t end = url->href.len;
+
+  if (url->components.query_start != url_component_unset) {
+    end = url->components.query_start - 1;
+  } else if (url->components.fragment_start != url_component_unset) {
+    end = url->components.fragment_start - 1;
+  }
+
+  uint32_t difference = url->components.path_start - end;
+
+  err = utf8_string_erase(&url->href, url->components.path_start, end - url->components.path_start);
+  assert(err == 0);
+
+  if (url->components.query_start != url_component_unset) {
+    url->components.query_start += difference;
+  }
+
+  if (url->components.fragment_start != url_component_unset) {
+    url->components.fragment_start += difference;
+  }
 
   err = url__parse(url, utf8_string_view_init(input, len), NULL, url_state_path_start);
   if (err < 0) return err;

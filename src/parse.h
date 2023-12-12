@@ -812,9 +812,11 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
 
         utf8_string_clear(&buffer);
 
-        state = url_state_path_start;
-
         if (state_override) goto done;
+
+        url->components.path_start = url->href.len;
+
+        state = url_state_path_start;
       } else {
         if (c == 0x5b) inside_brackets = true;
         else if (c == 0x5d) inside_brackets = false;
@@ -912,6 +914,8 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
         }
 
         if (state_override) goto done;
+
+        url->components.path_start = url->href.len;
 
         state = url_state_path_start;
         pointer--;
@@ -1017,6 +1021,8 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
           utf8_string_clear(&buffer);
         }
 
+        url->components.path_start = url->href.len;
+
         state = url_state_path_start;
       } else {
         err = utf8_string_append_character(&buffer, c);
@@ -1026,15 +1032,13 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
 
     // https://url.spec.whatwg.org/#path-start-state
     case url_state_path_start:
-      url->components.path_start = url->href.len;
-
       if (url__is_special(url)) {
         state = url_state_path;
 
         if (c != 0x2f && c != 0x5c) pointer--;
-      } else if (c == 0x3f) {
+      } else if (state_override == 0 && c == 0x3f) {
         state = url_state_query;
-      } else if (c == 0x23) {
+      } else if (state_override == 0 && c == 0x23) {
         url->components.query_start = url->href.len + 1;
 
         err = utf8_string_append_character(&url->href, '#');
@@ -1047,6 +1051,7 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
         state = url_state_path;
 
         if (c != 0x2f) pointer--;
+      } else if (state_override && utf8_string_view_empty(url_get_host(url))) {
       }
       break;
 
@@ -1055,7 +1060,7 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
       if (
         (c == -1 || c == 0x2f) ||
         (url__is_special(url) && c == 0x5c) ||
-        (c == 0x3f || c == 0x23)
+        (state_override == 0 && (c == 0x3f || c == 0x23))
       ) {
         utf8_string_view_t segment = utf8_string_substring(&buffer, 0, buffer.len);
 
@@ -1074,11 +1079,35 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base, url_s
         } else {
           // TODO Windows drive letter quirk
 
-          err = utf8_string_append_character(&url->href, '/');
-          if (err < 0) goto err;
+          if (state_override) {
+            uint32_t pos = url->href.len;
 
-          err = utf8_string_append(&url->href, &buffer);
-          if (err < 0) goto err;
+            if (url->components.query_start != url_component_unset) {
+              pos = url->components.query_start - 1;
+            } else if (url->components.fragment_start != url_component_unset) {
+              pos = url->components.fragment_start - 1;
+            }
+
+            err = utf8_string_prepend_character(&buffer, '/');
+            if (err < 0) goto err;
+
+            err = utf8_string_insert(&url->href, pos, &buffer);
+            if (err < 0) goto err;
+
+            if (url->components.query_start != url_component_unset) {
+              url->components.query_start += buffer.len;
+            }
+
+            if (url->components.fragment_start != url_component_unset) {
+              url->components.fragment_start += buffer.len;
+            }
+          } else {
+            err = utf8_string_append_character(&url->href, '/');
+            if (err < 0) goto err;
+
+            err = utf8_string_append(&url->href, &buffer);
+            if (err < 0) goto err;
+          }
         }
 
         utf8_string_clear(&buffer);
