@@ -10,6 +10,24 @@ url__is_ascii_digit (utf8_t c) {
   return c >= 0x30 && c <= 0x39;
 }
 
+// https://infra.spec.whatwg.org/#ascii-upper-hex-digit
+static inline bool
+url__is_ascii_upper_hex_digit (utf8_t c) {
+  return url__is_ascii_digit(c) || (c >= 0x41 && c <= 0x46);
+}
+
+// https://infra.spec.whatwg.org/#ascii-lower-hex-digit
+static inline bool
+url__is_ascii_lower_hex_digit (utf8_t c) {
+  return url__is_ascii_digit(c) || (c >= 0x61 && c <= 0x66);
+}
+
+// https://infra.spec.whatwg.org/#ascii-hex-digit
+static inline bool
+url__is_ascii_hex_digit (utf8_t c) {
+  return url__is_ascii_upper_hex_digit(c) || url__is_ascii_lower_hex_digit(c);
+}
+
 // https://infra.spec.whatwg.org/#ascii-upper-alpha
 static inline bool
 url__is_ascii_upper_alpha (utf8_t c) {

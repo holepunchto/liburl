@@ -5,7 +5,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
+#include <stdlib.h>
+#include <sys/_types/_size_t.h>
 #include <utf.h>
 #include <utf/string.h>
 
@@ -13,6 +14,7 @@
 #include "infra.h"
 #include "percent-encode-set.h"
 #include "percent-encode.h"
+#include "serialize.h"
 #include "type.h"
 
 typedef enum : uint8_t {
@@ -68,7 +70,7 @@ url__shorten_path (url_t *url) {
 
   utf8_string_view_t path = url_get_path(url);
 
-  size_t i = utf8_string_view_last_index_of_character(path, '/', path.len - 1);
+  size_t i = utf8_string_view_last_index_of_character(path, path.len - 1, '/');
 
   if (i == (size_t) -1) return;
 
@@ -127,25 +129,262 @@ url__is_double_dot_path_segment (const utf8_string_view_t path) {
   );
 }
 
+// https://url.spec.whatwg.org/#ends-in-a-number-checker
+static inline bool
+url__ends_in_a_number (const utf8_string_view_t input) {
+  size_t i = utf8_string_view_last_index_of_character(input, input.len - 1, '.');
+
+  utf8_string_view_t last = utf8_string_view_substring(input, i + 1, input.len);
+
+  if (utf8_string_view_empty(last)) {
+    if (i + 1 == 0) return false;
+
+    size_t j = utf8_string_view_last_index_of_character(input, i - 1, '.');
+
+    last = utf8_string_view_substring(input, j + 1, i);
+
+    if (utf8_string_view_empty(last)) return false;
+  }
+
+  if (last.len > 1 && last.data[0] == 0x30 && url__to_ascii_lowercase(last.data[1]) == 0x78) {
+    last = utf8_string_view_substring(last, 2, last.len);
+
+    for (size_t i = 0; i < last.len; i++) {
+      if (!url__is_ascii_hex_digit(last.data[i])) return false;
+    }
+  } else {
+    for (size_t i = 0; i < last.len; i++) {
+      if (!url__is_ascii_digit(last.data[i])) return false;
+    }
+  }
+
+  return true;
+}
+
 // https://url.spec.whatwg.org/#ipv4-number-parser
-static inline int
-url__parse_ipv4_number (const utf8_string_view_t input, utf8_string_t *result) {
-  return -1;
+static inline uint64_t
+url__parse_ipv4_number (utf8_string_view_t input) {
+  if (utf8_string_view_empty(input)) goto err;
+
+  uint8_t r = 10;
+
+  if (input.len > 1 && input.data[0] == 0x30 && url__to_ascii_lowercase(input.data[1]) == 0x78) {
+    input = utf8_string_view_substring(input, 2, input.len);
+
+    if (utf8_string_view_empty(input)) goto err;
+
+    r = 16;
+  } else if (input.len > 1 && input.data[0] == 0x30) {
+    input = utf8_string_view_substring(input, 1, input.len);
+
+    if (utf8_string_view_empty(input)) goto err;
+
+    r = 8;
+  }
+
+  uint64_t result = 0;
+
+  for (size_t i = 0; i < input.len; i++) {
+    utf8_t c = input.data[i];
+
+    uint8_t value;
+
+    if (url__is_ascii_digit(c)) {
+      value = c - 0x30;
+
+      if (value >= r) goto err;
+    } else if (r == 16 && url__is_ascii_upper_hex_digit(c)) {
+      value = c - 0x41 + 10;
+    } else if (r == 16 && url__is_ascii_lower_hex_digit(c)) {
+      value = c - 0x61 + 10;
+    } else {
+      goto err;
+    }
+
+    result = result * r + value;
+  }
+
+  return result;
+
+err:
+  return (uint64_t) -1;
 }
 
 // https://url.spec.whatwg.org/#concept-ipv4-parser
 static inline int
-url__parse_ipv4 (const utf8_string_view_t input, utf8_string_t *result) {
-  // TODO
+url__parse_ipv4 (utf8_string_view_t input, utf8_string_t *result) {
+  uint32_t address = 0;
 
+  uint8_t parts = 0;
+
+  while (!utf8_string_view_empty(input)) {
+    size_t i = utf8_string_view_index_of_character(input, 0, '.');
+
+    utf8_string_view_t part = utf8_string_view_substring(input, 0, i);
+
+    input = utf8_string_view_substring(input, i + 1, input.len);
+
+    uint64_t value = url__parse_ipv4_number(part);
+
+    if (value == (uint64_t) -1) goto err;
+
+    if (i == (size_t) -1) {
+      size_t bits = 32 - parts * 8;
+
+      if (value > (1 << bits)) goto err;
+
+      address = (address << bits) | value;
+
+      break;
+    }
+
+    if (value > 255 || parts == 3) goto err;
+
+    address = (address << 8) | value;
+
+    parts++;
+  }
+
+  return url__serialize_ipv4(address, result);
+
+err:
   return -1;
 }
 
 // https://url.spec.whatwg.org/#concept-ipv6-parser
 static inline int
-url__parse_ipv6 (const utf8_string_view_t input, utf8_string_t *result) {
-  // TODO
+url__parse_ipv6 (utf8_string_view_t input, utf8_string_t *result) {
+  int err;
 
+  if (utf8_string_view_empty(input)) goto err;
+
+  uint16_t address[8] = {0};
+
+  uint8_t piece_index = 0;
+  uint8_t compress = (uint8_t) -1;
+
+  const utf8_t *pointer = input.data;
+  const utf8_t *eof = &input.data[input.len];
+
+  if (input.data[0] == 0x3a) {
+    if (input.len == 1 || input.data[1] != 0x3a) goto err;
+
+    pointer += 2;
+    compress = ++piece_index;
+  }
+
+  while (pointer != eof) {
+    if (piece_index == 8) goto err;
+
+    if (*pointer == 0x3a) {
+      if (compress != (uint8_t) -1) goto err;
+
+      pointer++;
+      compress = ++piece_index;
+    }
+
+    uint16_t value = 0, length = 0;
+
+    while (length < 4 && pointer != eof && url__is_ascii_hex_digit(*pointer)) {
+      value = value * 0x10 + url__hex_decoded[*pointer];
+
+      pointer++;
+      length++;
+    }
+
+    if (pointer != eof && *pointer == 0x2e) {
+      if (length == 0) goto err;
+
+      pointer -= length;
+
+      if (piece_index > 6) goto err;
+
+      uint16_t numbers_seen = 0;
+
+      while (pointer != eof) {
+        uint16_t ipv4_piece = (uint16_t) -1;
+
+        if (numbers_seen > 0) {
+          if (*pointer == 0x2e && numbers_seen < 4) {
+            pointer++;
+          } else {
+            goto err;
+          }
+        }
+
+        if (pointer == eof || !url__is_ascii_digit(*pointer)) {
+          goto err;
+        }
+
+        while (pointer != eof && url__is_ascii_digit(*pointer)) {
+          uint8_t number = *pointer - 0x30;
+
+          if (ipv4_piece == (uint16_t) -1) {
+            ipv4_piece = number;
+          } else if (ipv4_piece == 0) {
+            goto err;
+          } else {
+            ipv4_piece = ipv4_piece * 10 + number;
+          }
+
+          if (ipv4_piece > 255) goto err;
+
+          pointer++;
+        }
+
+        address[piece_index] = address[piece_index] * 0x100 + ipv4_piece;
+
+        numbers_seen++;
+
+        if (numbers_seen == 2 || numbers_seen == 4) piece_index++;
+      }
+
+      if (numbers_seen != 4) goto err;
+
+      break;
+    } else if (*pointer == 0x3a) {
+      pointer++;
+
+      if (pointer == eof) goto err;
+    } else if (pointer != eof) {
+      goto err;
+    }
+
+    address[piece_index] = value;
+
+    piece_index++;
+  }
+
+  if (compress != (uint8_t) -1) {
+    int8_t swaps = piece_index - compress;
+
+    piece_index = 7;
+
+    while (piece_index != 0 && swaps > 0) {
+      uint16_t tmp = address[piece_index];
+
+      address[piece_index] = address[compress + swaps - 1];
+      address[compress + swaps - 1] = tmp;
+
+      piece_index--;
+      swaps--;
+    }
+  } else if (piece_index != 8) {
+    goto err;
+  }
+
+  err = utf8_string_append_character(result, '[');
+  if (err < 0) goto err;
+
+  err = url__serialize_ipv6(address, result);
+  if (err < 0) goto err;
+
+  err = utf8_string_append_character(result, ']');
+  if (err < 0) goto err;
+
+  return 0;
+
+err:
   return -1;
 }
 
@@ -155,14 +394,6 @@ url__parse_opqaue_host (const utf8_string_view_t input, utf8_string_t *result) {
   // TODO Forbidden host code point
 
   return url__percent_encode_string(input, url__c0_control_percent_encode_set, result);
-}
-
-// https://url.spec.whatwg.org/#ends-in-a-number-checker
-static inline bool
-url__ends_in_a_number (const utf8_string_t *string) {
-  // TODO
-
-  return false;
 }
 
 // https://url.spec.whatwg.org/#concept-host-parser
@@ -190,8 +421,8 @@ url__parse_host (const utf8_string_view_t input, bool is_opaque, utf8_string_t *
 
   utf8_string_t ascii_domain = domain;
 
-  if (url__ends_in_a_number(&ascii_domain)) {
-    err = url__parse_ipv4_number(utf8_string_substring(&ascii_domain, 0, ascii_domain.len), result);
+  if (url__ends_in_a_number(utf8_string_substring(&ascii_domain, 0, ascii_domain.len))) {
+    err = url__parse_ipv4(utf8_string_substring(&ascii_domain, 0, ascii_domain.len), result);
     if (err < 0) goto err;
   } else {
     err = utf8_string_append(result, &ascii_domain);
@@ -831,7 +1062,7 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
           if (!url__starts_with_windows_drive_letter(utf8_string_view_substring(input, pointer, input.len))) {
             utf8_string_view_t path = url_get_path(base);
 
-            size_t i = utf8_string_view_index_of_character(path, '/', 1);
+            size_t i = utf8_string_view_index_of_character(path, 1, '/');
 
             if (i != (size_t) -1 && url__is_normalized_windows_drive_letter(utf8_string_view_substring(path, 1, i))) {
               err = utf8_string_append_view(&url->href, utf8_string_view_substring(path, 0, i));

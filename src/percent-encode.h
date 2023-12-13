@@ -10,7 +10,7 @@
 #include "percent-encode-set.h"
 
 // https://url.spec.whatwg.org/#percent-encode
-static const utf8_t url__percent_encoded[768] =
+static const utf8_t url__hex_encoded[768] =
   "%00%01%02%03%04%05%06%07"
   "%08%09%0A%0B%0C%0D%0E%0F"
   "%10%11%12%13%14%15%16%17"
@@ -45,7 +45,7 @@ static const utf8_t url__percent_encoded[768] =
   "%F8%F9%FA%FB%FC%FD%FE%FF";
 
 // https://url.spec.whatwg.org/#percent-decode
-static const uint8_t url__percent_decoded[256] = {
+static const uint8_t url__hex_decoded[256] = {
   ['0'] = 0,
   ['1'] = 1,
   ['2'] = 2,
@@ -75,7 +75,7 @@ url__percent_encode_character (utf8_t character, url_percent_encode_set_t percen
   int err;
 
   if (url__is_in_percent_encode_set(percent_encode_set, character)) {
-    err = utf8_string_append_literal(result, &url__percent_encoded[(character << 1) + character], 3);
+    err = utf8_string_append_literal(result, &url__hex_encoded[(character << 1) + character], 3);
   } else {
     err = utf8_string_append_character(result, character);
   }
@@ -113,7 +113,7 @@ url__percent_encode_string (const utf8_string_view_t view, url_percent_encode_se
 
 static inline int
 url__percent_decode_character (const utf8_t *character, utf8_string_t *result) {
-  return utf8_string_append_character(result, url__percent_decoded[character[0]] * 0x10 + url__percent_decoded[character[1]]);
+  return utf8_string_append_character(result, url__hex_decoded[character[0]] * 0x10 + url__hex_decoded[character[1]]);
 }
 
 static inline int
