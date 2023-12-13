@@ -39,16 +39,36 @@ typedef enum : uint8_t {
   url_state_fragment,
 } url_state_t;
 
+// https://url.spec.whatwg.org/#windows-drive-letter
+static inline bool
+url__is_windows_drive_letter (const utf8_string_view_t input) {
+  return input.len > 1 && url__is_ascii_alpha(input.data[0]) && (input.data[1] == 0x3a || input.data[1] == 0x7c);
+}
+
+// https://url.spec.whatwg.org/#normalized-windows-drive-letter
+static inline bool
+url__is_normalized_windows_drive_letter (const utf8_string_view_t input) {
+  return input.len > 1 && url__is_ascii_alpha(input.data[0]) && input.data[1] == 0x3a;
+}
+
 // https://url.spec.whatwg.org/#shorten-a-urls-path
 static inline void
 url__shorten_path (url_t *url) {
   assert((url->flags & url_has_opaque_path) == 0);
 
-  // TODO Windows drive letter quick
+  utf8_string_view_t path = url_get_path(url);
 
-  size_t i = utf8_string_view_last_index_of_character(url_get_path(url), '/', -1);
+  size_t i = utf8_string_view_last_index_of_character(path, '/', path.len - 1);
 
   if (i == (size_t) -1) return;
+
+  if (
+    url->type == url_type_file &&
+    i == 0 &&
+    url__is_normalized_windows_drive_letter(utf8_string_view_substring(path, 1, path.len))
+  ) {
+    return;
+  }
 
   url->href.len = url->components.path_start + i;
 }
@@ -864,15 +884,15 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
       ) {
         utf8_string_view_t segment = utf8_string_substring(&buffer, 0, buffer.len);
 
-        if (url__is_double_dot_path_segment(segment) && c == 0x5c) {
+        if (url__is_double_dot_path_segment(segment)) {
           url__shorten_path(url);
 
-          if (c != 0x2f && !url__is_special(url) && c != 0x5c) {
+          if (c != 0x2f && !(url__is_special(url) && c == 0x5c)) {
             err = utf8_string_append_character(&url->href, '/');
             if (err < 0) goto err;
           }
         } else if (url__is_single_dot_path_segment(segment)) {
-          if (c != 0x2f && !url__is_special(url) && c != 0x5c) {
+          if (c != 0x2f && !(url__is_special(url) && c == 0x5c)) {
             err = utf8_string_append_character(&url->href, '/');
             if (err < 0) goto err;
           }

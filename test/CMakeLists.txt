@@ -12,6 +12,11 @@ list(APPEND tests
   parse-custom-scheme-root-path-query
   parse-custom-scheme-root-path-query-fragment
   parse-file-scheme
+  parse-file-scheme-double-dot
+  parse-file-scheme-double-dot-drive-letter
+  parse-file-scheme-double-dot-end
+  parse-file-scheme-double-dot-middle
+  parse-file-scheme-double-dot-root-path
   parse-file-scheme-empty-path
   parse-file-scheme-empty-path-fragment
   parse-file-scheme-fragment
