@@ -1,6 +1,6 @@
 # liburl
 
-WHATWG URL parser in C.
+WHATWG URL parser in C. Provides a memory efficient URL representation with immutable views over the various URL components, inspired by [WebKit](https://github.com/WebKit/WebKit) and [Ada](https://github.com/ada-url/ada).
 
 ## Usage
 
@@ -11,12 +11,9 @@ WHATWG URL parser in C.
 url_t url
 url_init(&url);
 
-int err = url_parse(&url, "https://example.com/foo/bar?baz", -1, NULL);
-if (err < 0) abort();
+url_parse(&url, "https://example.com/foo/bar?baz", -1, NULL);
 
 utf8_string_view_t href = url_get_href(&url);
-
-printf("href=%.*s\n", (int) href.len, href.data);
 
 url_destroy(&url);
 ```
