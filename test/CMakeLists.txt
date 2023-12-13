@@ -25,6 +25,7 @@ list(APPEND tests
   parse-file-scheme-query-fragment
   parse-file-scheme-relative-path
   parse-file-scheme-relative-path-with-scheme
+  parse-file-scheme-relative-path-with-scheme-drive-letter
   parse-file-scheme-root-path
   parse-http-scheme
   parse-http-scheme-base

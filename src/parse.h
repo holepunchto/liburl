@@ -51,6 +51,16 @@ url__is_normalized_windows_drive_letter (const utf8_string_view_t input) {
   return input.len > 1 && url__is_ascii_alpha(input.data[0]) && input.data[1] == 0x3a;
 }
 
+// https://url.spec.whatwg.org/#start-with-a-windows-drive-letter
+static inline bool
+url__starts_with_windows_drive_letter (const utf8_string_view_t input) {
+  return (
+    input.len >= 2 &&
+    url__is_normalized_windows_drive_letter(input) &&
+    (input.len == 2 || input.data[2] == 0x2f || input.data[2] == 0x5c || input.data[2] == 0x3f || input.data[2] == 0x23)
+  );
+}
+
 // https://url.spec.whatwg.org/#shorten-a-urls-path
 static inline void
 url__shorten_path (url_t *url) {
@@ -774,9 +784,11 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
 
           state = url_state_fragment;
         } else if (c != -1) {
-          // TODO: Windows drive letter quirk
-
-          url__shorten_path(url);
+          if (!url__starts_with_windows_drive_letter(utf8_string_view_substring(input, pointer, input.len))) {
+            url__shorten_path(url);
+          } else {
+            url->href.len = url->components.path_start;
+          }
 
           state = url_state_path;
           pointer--;

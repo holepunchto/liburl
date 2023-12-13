@@ -139,7 +139,7 @@ url__percent_decode_string (const utf8_string_view_t view, utf8_string_t *result
 
     if (
       c == 0x25 &&
-      i < n - 2 &&
+      i + 2 < n &&
       url__is_ascii_alphanumeric(view.data[i + 1]) &&
       url__is_ascii_alphanumeric(view.data[i + 2])
     ) {
