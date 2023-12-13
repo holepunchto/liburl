@@ -17,6 +17,8 @@ list(APPEND tests
   parse-file-scheme-double-dot-end
   parse-file-scheme-double-dot-middle
   parse-file-scheme-double-dot-root-path
+  parse-file-scheme-drive-letter
+  parse-file-scheme-drive-letter-normalize
   parse-file-scheme-empty-path
   parse-file-scheme-empty-path-fragment
   parse-file-scheme-fragment
@@ -26,6 +28,7 @@ list(APPEND tests
   parse-file-scheme-relative-path
   parse-file-scheme-relative-path-with-scheme
   parse-file-scheme-relative-path-with-scheme-drive-letter
+  parse-file-scheme-relative-path-with-scheme-drive-letter-in-base
   parse-file-scheme-root-path
   parse-http-scheme
   parse-http-scheme-base

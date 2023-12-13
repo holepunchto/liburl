@@ -42,13 +42,13 @@ typedef enum : uint8_t {
 // https://url.spec.whatwg.org/#windows-drive-letter
 static inline bool
 url__is_windows_drive_letter (const utf8_string_view_t input) {
-  return input.len > 1 && url__is_ascii_alpha(input.data[0]) && (input.data[1] == 0x3a || input.data[1] == 0x7c);
+  return input.len == 2 && url__is_ascii_alpha(input.data[0]) && (input.data[1] == 0x3a || input.data[1] == 0x7c);
 }
 
 // https://url.spec.whatwg.org/#normalized-windows-drive-letter
 static inline bool
 url__is_normalized_windows_drive_letter (const utf8_string_view_t input) {
-  return input.len > 1 && url__is_ascii_alpha(input.data[0]) && input.data[1] == 0x3a;
+  return input.len == 2 && url__is_ascii_alpha(input.data[0]) && input.data[1] == 0x3a;
 }
 
 // https://url.spec.whatwg.org/#start-with-a-windows-drive-letter
@@ -56,7 +56,7 @@ static inline bool
 url__starts_with_windows_drive_letter (const utf8_string_view_t input) {
   return (
     input.len >= 2 &&
-    url__is_normalized_windows_drive_letter(input) &&
+    url__is_normalized_windows_drive_letter(utf8_string_view_substring(input, 0, 2)) &&
     (input.len == 2 || input.data[2] == 0x2f || input.data[2] == 0x5c || input.data[2] == 0x3f || input.data[2] == 0x23)
   );
 }
@@ -826,7 +826,20 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
 
           url->components.host_end = url->href.len;
 
-          // TODO: Windows drive letter quirk
+          url->components.path_start = url->href.len;
+
+          if (!url__starts_with_windows_drive_letter(utf8_string_view_substring(input, pointer, input.len))) {
+            utf8_string_view_t path = url_get_path(base);
+
+            size_t i = utf8_string_view_index_of_character(path, '/', 1);
+
+            if (i != (size_t) -1 && url__is_normalized_windows_drive_letter(utf8_string_view_substring(path, 1, i))) {
+              err = utf8_string_append_view(&url->href, utf8_string_view_substring(path, 0, i));
+              if (err < 0) goto err;
+            }
+          }
+        } else {
+          url->components.path_start = url->href.len;
         }
 
         state = url_state_path;
@@ -839,24 +852,31 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
       if (c == -1 || c == 0x2f || c == 0x5c || c == 0x3f || c == 0x23) {
         pointer--;
 
-        // TODO: Windows drive letter quirk
-
-        url->components.host_start = url->href.len;
-
-        if (utf8_string_empty(&buffer)) {
+        if (url__is_windows_drive_letter(utf8_string_substring(&buffer, 0, buffer.len))) {
+          url->components.host_start = url->href.len;
           url->components.host_end = url->href.len;
+
+          url->components.path_start = url->href.len;
+
+          state = url_state_path;
         } else {
-          err = url__parse_host(utf8_string_substring(&buffer, 0, buffer.len), !url__is_special(url), &url->href);
-          if (err < 0) goto err;
+          url->components.host_start = url->href.len;
 
-          url->components.host_end = url->href.len;
+          if (utf8_string_empty(&buffer)) {
+            url->components.host_end = url->href.len;
+          } else {
+            err = url__parse_host(utf8_string_substring(&buffer, 0, buffer.len), !url__is_special(url), &url->href);
+            if (err < 0) goto err;
 
-          utf8_string_clear(&buffer);
+            url->components.host_end = url->href.len;
+
+            utf8_string_clear(&buffer);
+          }
+
+          url->components.path_start = url->href.len;
+
+          state = url_state_path_start;
         }
-
-        url->components.path_start = url->href.len;
-
-        state = url_state_path_start;
       } else {
         err = utf8_string_append_character(&buffer, c);
         if (err < 0) goto err;
@@ -909,7 +929,13 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
             if (err < 0) goto err;
           }
         } else {
-          // TODO Windows drive letter quirk
+          if (
+            url->type == url_type_file &&
+            utf8_string_view_empty(url_get_path(url)) &&
+            url__is_windows_drive_letter(utf8_string_substring(&buffer, 0, buffer.len))
+          ) {
+            buffer.data[1] = ':';
+          }
 
           err = utf8_string_append_character(&url->href, '/');
           if (err < 0) goto err;
