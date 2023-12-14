@@ -439,7 +439,7 @@ err:
   return -1;
 }
 
-static int
+static inline int
 url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
   int err;
 
@@ -447,6 +447,9 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
 
   utf8_string_t buffer;
   utf8_string_init(&buffer);
+
+  err = utf8_string_reserve(&url->href, input.len);
+  if (err < 0) goto err;
 
   bool at_sign_seen = false, inside_brackets = false, password_token_seen = false;
 
