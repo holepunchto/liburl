@@ -391,7 +391,9 @@ err:
 // https://url.spec.whatwg.org/#concept-opaque-host-parser
 static inline int
 url__parse_opqaue_host (const utf8_string_view_t input, utf8_string_t *result) {
-  // TODO Forbidden host code point
+  if (url__contains_in_percent_encode_set(url__host_percent_encode_set, input)) {
+    return -1;
+  }
 
   return url__percent_encode_string(input, url__c0_control_percent_encode_set, result);
 }
@@ -410,6 +412,13 @@ url__parse_host (const utf8_string_view_t input, bool is_opaque, utf8_string_t *
   if (is_opaque) return url__parse_opqaue_host(input, result);
 
   assert(input.len != 0);
+
+  if (!url__contains_in_percent_encode_set(url__domain_percent_encode_set, input)) {
+    err = utf8_string_append_view(result, input);
+    if (err < 0) return err;
+
+    return 0;
+  }
 
   utf8_string_t domain;
   utf8_string_init(&domain);
