@@ -1265,8 +1265,6 @@ done:
 err:
   utf8_string_destroy(&buffer);
 
-  url_destroy(url);
-
   return -1;
 }
 
