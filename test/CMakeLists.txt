@@ -34,6 +34,7 @@ list(APPEND tests
   parse-http-scheme-base
   parse-http-scheme-host-ipv4
   parse-http-scheme-host-ipv6
+  parse-http-scheme-password
   parse-http-scheme-port
   parse-http-scheme-port-default
   parse-http-scheme-protocol-relative
