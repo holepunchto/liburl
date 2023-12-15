@@ -502,8 +502,8 @@ url__parse_host (const utf8_string_view_t input, bool is_opaque, utf8_string_t *
 
   utf8_string_t ascii_domain = domain;
 
-  if (url__ends_in_a_number(utf8_string_substring(&ascii_domain, 0, ascii_domain.len))) {
-    err = url__parse_ipv4(utf8_string_substring(&ascii_domain, 0, ascii_domain.len), result);
+  if (url__ends_in_a_number(utf8_string_view(&ascii_domain))) {
+    err = url__parse_ipv4(utf8_string_view(&ascii_domain), result);
     if (err < 0) goto err;
   } else {
     err = utf8_string_append(result, &ascii_domain);
@@ -557,7 +557,7 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
         err = utf8_string_append_character(&buffer, url__to_ascii_lowercase(c));
         if (err < 0) goto err;
       } else if (c == 0x3a) {
-        url_type_t type = url__type(utf8_string_substring(&buffer, 0, buffer.len));
+        url_type_t type = url__type(utf8_string_view(&buffer));
 
         err = utf8_string_append(&url->href, &buffer);
         if (err < 0) goto err;
@@ -987,7 +987,7 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
 
         uint32_t host_start = url->href.len;
 
-        err = url__parse_host(utf8_string_substring(&buffer, 0, buffer.len), !url__is_special(url), &url->href);
+        err = url__parse_host(utf8_string_view(&buffer), !url__is_special(url), &url->href);
         if (err < 0) goto err;
 
         url->components.host_start = host_start;
@@ -1006,7 +1006,7 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
 
         uint32_t host_start = url->href.len;
 
-        err = url__parse_host(utf8_string_substring(&buffer, 0, buffer.len), !url__is_special(url), &url->href);
+        err = url__parse_host(utf8_string_view(&buffer), !url__is_special(url), &url->href);
         if (err < 0) goto err;
 
         url->components.host_start = host_start;
@@ -1167,7 +1167,7 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
       if (c == -1 || c == 0x2f || c == 0x5c || c == 0x3f || c == 0x23) {
         pointer--;
 
-        if (url__is_windows_drive_letter(utf8_string_substring(&buffer, 0, buffer.len))) {
+        if (url__is_windows_drive_letter(utf8_string_view(&buffer))) {
           url->components.host_start = url->href.len;
           url->components.host_end = url->href.len;
 
@@ -1180,7 +1180,7 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
           if (utf8_string_empty(&buffer)) {
             url->components.host_end = url->href.len;
           } else {
-            err = url__parse_host(utf8_string_substring(&buffer, 0, buffer.len), !url__is_special(url), &url->href);
+            err = url__parse_host(utf8_string_view(&buffer), !url__is_special(url), &url->href);
             if (err < 0) goto err;
 
             url->components.host_end = url->href.len;
@@ -1229,7 +1229,7 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
         (url__is_special(url) && c == 0x5c) ||
         (c == 0x3f || c == 0x23)
       ) {
-        utf8_string_view_t segment = utf8_string_substring(&buffer, 0, buffer.len);
+        utf8_string_view_t segment = utf8_string_view(&buffer);
 
         if (url__is_double_dot_path_segment(segment)) {
           url__shorten_path(url);
@@ -1247,7 +1247,7 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
           if (
             url->type == url_type_file &&
             utf8_string_view_empty(url_get_path(url)) &&
-            url__is_windows_drive_letter(utf8_string_substring(&buffer, 0, buffer.len))
+            url__is_windows_drive_letter(segment)
           ) {
             buffer.data[1] = ':';
           }
@@ -1310,7 +1310,7 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
 
         url->components.query_start = url->href.len;
 
-        err = url__percent_encode_string(utf8_string_substring(&buffer, 0, buffer.len), *query_percent_encode_set, &url->href);
+        err = url__percent_encode_string(utf8_string_view(&buffer), *query_percent_encode_set, &url->href);
         if (err < 0) goto err;
 
         utf8_string_clear(&buffer);
