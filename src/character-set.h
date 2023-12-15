@@ -7,39 +7,39 @@
 #include <utf/string.h>
 
 /**
- * A percent encode set is stored as a 32 x 8 bit list with each bit
- * representing an ASCII byte. A given ASCII byte should be percent
- * encoded if its corresponding bit is set in the percent encode set.
+ * A character set is stored as a 32 x 8 bit list with each bit
+ * representing an ASCII byte. A given ASCII byte is in the character set
+ * if its corresponding bit is set.
  */
-typedef const uint8_t url_percent_encode_set_t[32];
+typedef const uint8_t url_character_set_t[32];
 
 static inline bool
-url__is_in_percent_encode_set (url_percent_encode_set_t percent_encode_set, utf8_t character) {
-  return (percent_encode_set[character >> 3] & (1 << (character & 7))) != 0;
+url__is_in_character_set (url_character_set_t character_set, utf8_t character) {
+  return (character_set[character >> 3] & (1 << (character & 7))) != 0;
 }
 
 static inline bool
-url__contains_in_percent_encode_set (url_percent_encode_set_t percent_encode_set, utf8_string_view_t input) {
+url__contains_from_character_set (url_character_set_t character_set, utf8_string_view_t input) {
   size_t i = 0, n = input.len;
 
   uint8_t accumulator = 0;
 
   for (; i + 4 <= n; i += 4) {
-    accumulator |= url__is_in_percent_encode_set(percent_encode_set, input.data[i]);
-    accumulator |= url__is_in_percent_encode_set(percent_encode_set, input.data[i + 1]);
-    accumulator |= url__is_in_percent_encode_set(percent_encode_set, input.data[i + 2]);
-    accumulator |= url__is_in_percent_encode_set(percent_encode_set, input.data[i + 4]);
+    accumulator |= url__is_in_character_set(character_set, input.data[i]);
+    accumulator |= url__is_in_character_set(character_set, input.data[i + 1]);
+    accumulator |= url__is_in_character_set(character_set, input.data[i + 2]);
+    accumulator |= url__is_in_character_set(character_set, input.data[i + 4]);
   }
 
   for (; i < n; i++) {
-    accumulator |= url__is_in_percent_encode_set(percent_encode_set, input.data[i]);
+    accumulator |= url__is_in_character_set(character_set, input.data[i]);
   }
 
   return accumulator;
 }
 
 // https://url.spec.whatwg.org/#c0-control-percent-encode-set
-static url_percent_encode_set_t url__c0_control_percent_encode_set = {
+static url_character_set_t url__c0_control_percent_encode_set = {
   // 00    01     02     03     04     05     06     07
   0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80,
   // 08    09     0a     0b     0c     0d     0e     0f
@@ -107,7 +107,7 @@ static url_percent_encode_set_t url__c0_control_percent_encode_set = {
 };
 
 // https://url.spec.whatwg.org/#query-percent-encode-set
-static url_percent_encode_set_t url__query_percent_encode_set = {
+static url_character_set_t url__query_percent_encode_set = {
   // 00    01     02     03     04     05     06     07
   0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80,
   // 08    09     0a     0b     0c     0d     0e     0f
@@ -175,7 +175,7 @@ static url_percent_encode_set_t url__query_percent_encode_set = {
 };
 
 // https://url.spec.whatwg.org/#special-query-percent-encode-set
-static url_percent_encode_set_t url__special_query_percent_encode_set = {
+static url_character_set_t url__special_query_percent_encode_set = {
   // 00    01     02     03     04     05     06     07
   0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80,
   // 08    09     0a     0b     0c     0d     0e     0f
@@ -243,7 +243,7 @@ static url_percent_encode_set_t url__special_query_percent_encode_set = {
 };
 
 // https://url.spec.whatwg.org/#fragment-percent-encode-set
-static url_percent_encode_set_t url__fragment_percent_encode_set = {
+static url_character_set_t url__fragment_percent_encode_set = {
   // 00    01     02     03     04     05     06     07
   0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80,
   // 08    09     0a     0b     0c     0d     0e     0f
@@ -311,7 +311,7 @@ static url_percent_encode_set_t url__fragment_percent_encode_set = {
 };
 
 // https://url.spec.whatwg.org/#userinfo-percent-encode-set
-static url_percent_encode_set_t url__userinfo_percent_encode_set = {
+static url_character_set_t url__userinfo_percent_encode_set = {
   // 00    01     02     03     04     05     06     07
   0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80,
   // 08    09     0a     0b     0c     0d     0e     0f
@@ -379,7 +379,7 @@ static url_percent_encode_set_t url__userinfo_percent_encode_set = {
 };
 
 // https://url.spec.whatwg.org/#path-percent-encode-set
-static url_percent_encode_set_t url__path_percent_encode_set = {
+static url_character_set_t url__path_percent_encode_set = {
   // 00    01     02     03     04     05     06     07
   0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80,
   // 08    09     0a     0b     0c     0d     0e     0f
@@ -447,7 +447,7 @@ static url_percent_encode_set_t url__path_percent_encode_set = {
 };
 
 // https://url.spec.whatwg.org/#forbidden-host-code-point
-static url_percent_encode_set_t url__host_percent_encode_set = {
+static url_character_set_t url__forbidden_host_character_set = {
   // 00    01     02     03     04     05     06     07
   0x01 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
   // 08    09     0a     0b     0c     0d     0e     0f
@@ -515,7 +515,7 @@ static url_percent_encode_set_t url__host_percent_encode_set = {
 };
 
 // https://url.spec.whatwg.org/#forbidden-domain-code-point
-static url_percent_encode_set_t url__domain_percent_encode_set = {
+static url_character_set_t url__forbidden_domain_character_set = {
   // 00    01     02     03     04     05     06     07
   0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80,
   // 08    09     0a     0b     0c     0d     0e     0f

@@ -11,8 +11,8 @@
 #include <utf/string.h>
 
 #include "../include/url.h"
+#include "character-set.h"
 #include "infra.h"
-#include "percent-encode-set.h"
 #include "percent-encode.h"
 #include "serialize.h"
 #include "type.h"
@@ -391,7 +391,7 @@ err:
 // https://url.spec.whatwg.org/#concept-opaque-host-parser
 static inline int
 url__parse_opqaue_host (const utf8_string_view_t input, utf8_string_t *result) {
-  if (url__contains_in_percent_encode_set(url__host_percent_encode_set, input)) {
+  if (url__contains_from_character_set(url__forbidden_host_character_set, input)) {
     return -1;
   }
 
@@ -413,7 +413,7 @@ url__parse_host (const utf8_string_view_t input, bool is_opaque, utf8_string_t *
 
   assert(input.len != 0);
 
-  if (!url__contains_in_percent_encode_set(url__domain_percent_encode_set, input)) {
+  if (!url__contains_from_character_set(url__forbidden_domain_character_set, input)) {
     err = utf8_string_append_view(result, input);
     if (err < 0) return err;
 
@@ -1232,9 +1232,9 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
         err = utf8_string_append_character(&url->href, '?');
         if (err < 0) goto err;
 
-        url_percent_encode_set_t *query_percent_encode_set = url__is_special(url)
-                                                               ? &url__special_query_percent_encode_set
-                                                               : &url__query_percent_encode_set;
+        url_character_set_t *query_percent_encode_set = url__is_special(url)
+                                                          ? &url__special_query_percent_encode_set
+                                                          : &url__query_percent_encode_set;
 
         url->components.query_start = url->href.len;
 

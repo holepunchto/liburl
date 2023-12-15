@@ -20,10 +20,10 @@ target_sources(
   INTERFACE
     include/url.h
   PRIVATE
+    src/character-set.h
     src/infra.h
     src/parse.h
     src/percent-encode.h
-    src/percent-encode-set.h
     src/serialize.h
     src/type.h
     src/url.c

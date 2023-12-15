@@ -6,8 +6,8 @@
 #include <utf.h>
 #include <utf/string.h>
 
+#include "character-set.h"
 #include "infra.h"
-#include "percent-encode-set.h"
 
 // https://url.spec.whatwg.org/#percent-encode
 static const utf8_t url__hex_encoded[768] =
@@ -71,10 +71,10 @@ static const uint8_t url__hex_decoded[256] = {
 };
 
 static inline int
-url__percent_encode_character (utf8_t character, url_percent_encode_set_t percent_encode_set, utf8_string_t *result) {
+url__percent_encode_character (utf8_t character, url_character_set_t percent_encode_set, utf8_string_t *result) {
   int err;
 
-  if (url__is_in_percent_encode_set(percent_encode_set, character)) {
+  if (url__is_in_character_set(percent_encode_set, character)) {
     err = utf8_string_append_literal(result, &url__hex_encoded[(character << 1) + character], 3);
   } else {
     err = utf8_string_append_character(result, character);
@@ -84,13 +84,13 @@ url__percent_encode_character (utf8_t character, url_percent_encode_set_t percen
 }
 
 static inline int
-url__percent_encode_string (const utf8_string_view_t view, url_percent_encode_set_t percent_encode_set, utf8_string_t *result) {
+url__percent_encode_string (const utf8_string_view_t view, url_character_set_t percent_encode_set, utf8_string_t *result) {
   int err;
 
   size_t i = 0;
 
   for (size_t n = view.len; i < n; i++) {
-    if (url__is_in_percent_encode_set(percent_encode_set, view.data[i])) {
+    if (url__is_in_character_set(percent_encode_set, view.data[i])) {
       break;
     }
   }
