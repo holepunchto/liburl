@@ -6,7 +6,6 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <sys/_types/_size_t.h>
 #include <utf.h>
 #include <utf/string.h>
 
@@ -462,7 +461,7 @@ err:
 
 // https://url.spec.whatwg.org/#concept-opaque-host-parser
 static inline int
-url__parse_opqaue_host (const utf8_string_view_t input, utf8_string_t *result) {
+url__parse_opaque_host (const utf8_string_view_t input, utf8_string_t *result) {
   if (url__contains_from_character_set(url__forbidden_host_character_set, input)) {
     return -1;
   }
@@ -481,7 +480,7 @@ url__parse_host (const utf8_string_view_t input, bool is_opaque, utf8_string_t *
     return url__parse_ipv6(utf8_string_view_substring(input, 1, input.len - 1), result);
   }
 
-  if (is_opaque) return url__parse_opqaue_host(input, result);
+  if (is_opaque) return url__parse_opaque_host(input, result);
 
   assert(input.len != 0);
 
@@ -541,9 +540,6 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
     // https://url.spec.whatwg.org/#scheme-start-state
     case url_state_scheme_start:
       if (url__is_ascii_alpha(c)) {
-        err = utf8_string_append_character(&buffer, url__to_ascii_lowercase(c));
-        if (err < 0) goto err;
-
         state = url_state_scheme;
       } else {
         state = url_state_no_scheme;
@@ -553,23 +549,29 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
 
     // https://url.spec.whatwg.org/#scheme-state
     case url_state_scheme:
-      if (url__is_ascii_alphanumeric(c) || c == 0x2b || c == 0x2d || c == 0x2e) {
-        err = utf8_string_append_character(&buffer, url__to_ascii_lowercase(c));
-        if (err < 0) goto err;
-      } else if (c == 0x3a) {
-        url_type_t type = url__type(utf8_string_view(&buffer));
+      while (url__is_ascii_alphanumeric(c) || c == 0x2b || c == 0x2d || c == 0x2e) {
+        c = pointer < n ? input.data[++pointer] : -1;
+      }
 
-        err = utf8_string_append(&url->href, &buffer);
+      if (c == 0x3a) {
+        url_type_t type = url__type(utf8_string_view_substring(input, 0, pointer));
+
+        err = utf8_string_append_view(&url->href, utf8_string_view_substring(input, 0, pointer + 1 /* : */));
         if (err < 0) goto err;
+
+        if (type == url_type_opaque) {
+          for (size_t i = 0, n = url->href.len - 1 /* : */; i < n; i++) {
+            url->href.data[i] = url__to_ascii_lowercase(url->href.data[i]);
+          }
+
+          type = url__type(utf8_string_substring(&url->href, 0, url->href.len - 1 /* : */));
+        }
 
         url->type = type;
 
-        url->components.scheme_end = url->href.len;
+        url->components.scheme_end = url->href.len - 1 /* : */;
 
-        err = utf8_string_append_character(&url->href, ':');
-        if (err < 0) goto err;
-
-        utf8_string_clear(&buffer);
+        utf8_string_view_t scheme = url_get_scheme(url);
 
         if (url->type == url_type_file) {
           err = utf8_string_append_literal(&url->href, (utf8_t *) "//", 2);
@@ -602,8 +604,6 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
           state = url_state_opaque_path;
         }
       } else {
-        utf8_string_clear(&buffer);
-
         state = url_state_no_scheme;
         pointer = -1;
       }

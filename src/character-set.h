@@ -28,7 +28,7 @@ url__contains_from_character_set (url_character_set_t character_set, utf8_string
     accumulator |= url__is_in_character_set(character_set, input.data[i]);
     accumulator |= url__is_in_character_set(character_set, input.data[i + 1]);
     accumulator |= url__is_in_character_set(character_set, input.data[i + 2]);
-    accumulator |= url__is_in_character_set(character_set, input.data[i + 4]);
+    accumulator |= url__is_in_character_set(character_set, input.data[i + 3]);
   }
 
   for (; i < n; i++) {
