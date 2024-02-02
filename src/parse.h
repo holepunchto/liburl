@@ -16,7 +16,7 @@
 #include "serialize.h"
 #include "type.h"
 
-typedef enum : uint8_t {
+typedef enum {
   url_state_scheme_start = 1,
   url_state_scheme,
   url_state_no_scheme,
