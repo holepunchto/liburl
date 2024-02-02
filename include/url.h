@@ -14,11 +14,11 @@ typedef uint32_t url_component_t;
 
 static const url_component_t url_component_unset = (url_component_t) -1;
 
-enum : uint8_t {
+enum {
   url_has_opaque_path = 0x1,
 };
 
-typedef enum : uint8_t {
+typedef enum {
   url_type_opaque,
   url_type_http,
   url_type_https,
