@@ -585,7 +585,7 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
     // https://url.spec.whatwg.org/#scheme-state
     case url_state_scheme:
       while (url__is_in_character_set(url__scheme_character_set, c)) {
-        c = pointer < n ? input.data[++pointer] : -1;
+        c = pointer + 1 < n ? input.data[++pointer] : -1;
       }
 
       if (c == 0x3a) {
