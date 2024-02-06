@@ -763,8 +763,10 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
       }
 
       if (c == 0x2f) {
-        err = utf8_string_append_literal(&url->href, (utf8_t *) "//", 2);
-        if (err < 0) goto err;
+        if (url->type != url_type_opaque) {
+          err = utf8_string_append_literal(&url->href, (utf8_t *) "//", 2);
+          if (err < 0) goto err;
+        }
 
         url->components.username_end = url->href.len;
 
@@ -1107,11 +1109,11 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
 
     // https://url.spec.whatwg.org/#file-state
     case url_state_file:
+      url->components.host_start = url->href.len;
+
       if (c == 0x2f || c == 0x5c) {
         state = url_state_file_slash;
       } else if (base != NULL && base->type == url_type_file) {
-        url->components.host_start = url->href.len;
-
         err = utf8_string_append_view(&url->href, url_get_host(base));
         if (err < 0) goto err;
 
@@ -1158,6 +1160,9 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
           }
         }
       } else {
+        url->components.host_end = url->href.len;
+        url->components.path_start = url->href.len;
+
         state = url_state_path;
         pointer--;
       }
@@ -1169,8 +1174,6 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
         state = url_state_file_host;
       } else {
         if (base != NULL && base->type == url_type_file) {
-          url->components.host_start = url->href.len;
-
           err = utf8_string_append_view(&url->href, url_get_host(base));
           if (err < 0) goto err;
 
@@ -1189,6 +1192,7 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
             }
           }
         } else {
+          url->components.host_end = url->href.len;
           url->components.path_start = url->href.len;
         }
 
