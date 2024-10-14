@@ -828,6 +828,11 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
             url->components.port = base->components.port;
           }
         } else {
+          if (base->components.scheme_end + 3 /* :// */ == base->components.username_end) {
+            err = utf8_string_append_literal(&url->href, (utf8_t *) "//", 2);
+            if (err < 0) goto err;
+          }
+
           url->components.username_end = url->href.len;
           url->components.host_start = url->href.len;
           url->components.host_end = url->href.len;
@@ -881,12 +886,12 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
       } else {
         utf8_string_view_t host = url_get_host(base);
 
-        if (url->type == url_type_opaque && base->components.scheme_end + 3 /* :// */ == base->components.host_start) {
-          err = utf8_string_append_literal(&url->href, (utf8_t *) "//", 2);
-          if (err < 0) goto err;
-        }
-
         if (!utf8_string_view_empty(host)) {
+          if (url->type == url_type_opaque) {
+            err = utf8_string_append_literal(&url->href, (utf8_t *) "//", 2);
+            if (err < 0) goto err;
+          }
+
           utf8_string_view_t username = url_get_username(base);
 
           if (!utf8_string_view_empty(username)) {
@@ -928,6 +933,11 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
             if (err < 0) goto err;
           }
         } else {
+          if (url->type == url_type_opaque && base->components.scheme_end + 3 /* :// */ == base->components.username_end) {
+            err = utf8_string_append_literal(&url->href, (utf8_t *) "//", 2);
+            if (err < 0) goto err;
+          }
+
           url->components.username_end = url->href.len;
           url->components.host_start = url->href.len;
           url->components.host_end = url->href.len;
