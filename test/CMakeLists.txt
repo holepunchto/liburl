@@ -2,9 +2,11 @@ list(APPEND tests
   parse-custom-scheme-fragment
   parse-custom-scheme-query
   parse-custom-scheme-query-fragment
+  parse-custom-scheme-relative-absolute-path
   parse-custom-scheme-relative-bare-path
   parse-custom-scheme-relative-bare-path-username
   parse-custom-scheme-relative-double-slash
+  parse-custom-scheme-relative-double-slash-empty-host
   parse-custom-scheme-relative-opaque-path-fragment
   parse-custom-scheme-relative-opaque-path-fragment-with-query
   parse-custom-scheme-relative-path

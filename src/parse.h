@@ -881,12 +881,12 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
       } else {
         utf8_string_view_t host = url_get_host(base);
 
-        if (!utf8_string_view_empty(host)) {
-          if (url->type == url_type_opaque) {
-            err = utf8_string_append_literal(&url->href, (utf8_t *) "//", 2);
-            if (err < 0) goto err;
-          }
+        if (url->type == url_type_opaque && base->components.scheme_end + 3 /* :// */ == base->components.host_start) {
+          err = utf8_string_append_literal(&url->href, (utf8_t *) "//", 2);
+          if (err < 0) goto err;
+        }
 
+        if (!utf8_string_view_empty(host)) {
           utf8_string_view_t username = url_get_username(base);
 
           if (!utf8_string_view_empty(username)) {
