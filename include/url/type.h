@@ -4,7 +4,7 @@
 #include <utf.h>
 #include <utf/string.h>
 
-#include "../include/url.h"
+#include "../url.h"
 
 static inline url_type_t
 url__type (const utf8_string_view_t scheme) {

@@ -19,13 +19,13 @@ target_sources(
   url
   INTERFACE
     include/url.h
+    include/url/character-set.h
+    include/url/infra.h
+    include/url/parse.h
+    include/url/percent-encode.h
+    include/url/serialize.h
+    include/url/type.h
   PRIVATE
-    src/character-set.h
-    src/infra.h
-    src/parse.h
-    src/percent-encode.h
-    src/serialize.h
-    src/type.h
     src/url.c
 )
 
@@ -71,6 +71,8 @@ target_link_libraries(
 install(TARGETS url_shared url_static)
 
 install(FILES include/url.h DESTINATION include)
+
+install(DIRECTORY include/url DESTINATION include)
 
 if(PROJECT_IS_TOP_LEVEL)
   enable_testing()

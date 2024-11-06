@@ -9,7 +9,7 @@
 #include <utf.h>
 #include <utf/string.h>
 
-#include "../include/url.h"
+#include "../url.h"
 #include "character-set.h"
 #include "infra.h"
 #include "percent-encode.h"
