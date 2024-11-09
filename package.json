@@ -11,7 +11,7 @@
     "url": "https://github.com/holepunchto/liburl/issues"
   },
   "homepage": "https://github.com/holepunchto/liburl#readme",
-  "dependencies": {
+  "devDependencies": {
     "cmake-fetch": "^1.0.0"
   }
 }
