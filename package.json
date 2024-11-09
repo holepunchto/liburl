@@ -1,0 +1,17 @@
+{
+  "private": true,
+  "name": "liburl",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/holepunchto/liburl.git"
+  },
+  "author": "Holepunch",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/holepunchto/liburl/issues"
+  },
+  "homepage": "https://github.com/holepunchto/liburl#readme",
+  "dependencies": {
+    "cmake-fetch": "^1.0.0"
+  }
+}
