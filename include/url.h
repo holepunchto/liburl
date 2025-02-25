@@ -133,7 +133,7 @@ url_get_fragment (const url_t *url) {
 
 #include "url/parse.h"
 
-int
+inline int
 url_parse (url_t *url, const utf8_t *input, size_t len, const url_t *base) {
   if (len == (size_t) -1) len = strlen((char *) input);
 
