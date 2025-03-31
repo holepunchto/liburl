@@ -11,6 +11,7 @@ list(APPEND tests
   parse-custom-scheme-relative-opaque-path-fragment-with-query
   parse-custom-scheme-relative-path
   parse-custom-scheme-relative-path-empty-host
+  parse-custom-scheme-relative-path-host-no-path
   parse-custom-scheme-relative-path-host
   parse-custom-scheme-root-path
   parse-custom-scheme-root-path-fragment
