@@ -5,14 +5,27 @@ list(APPEND tests
   parse-custom-scheme-relative-absolute-path
   parse-custom-scheme-relative-absolute-path-empty-host
   parse-custom-scheme-relative-absolute-path-host
+  parse-custom-scheme-relative-absolute-path-host-empty-path
+  parse-custom-scheme-relative-absolute-path-host-no-path
   parse-custom-scheme-relative-bare-path
   parse-custom-scheme-relative-bare-path-username
+  parse-custom-scheme-relative-double-dot-host
+  parse-custom-scheme-relative-double-dot-host-empty-path
+  parse-custom-scheme-relative-double-dot-host-no-path
+  parse-custom-scheme-relative-empty-path
+  parse-custom-scheme-relative-empty-path-host
+  parse-custom-scheme-relative-empty-path-host-empty-path
+  parse-custom-scheme-relative-empty-path-host-no-path
+  parse-custom-scheme-relative-fragment-host
+  parse-custom-scheme-relative-fragment-host-empty-path
+  parse-custom-scheme-relative-fragment-host-no-path
   parse-custom-scheme-relative-opaque-path-fragment
   parse-custom-scheme-relative-opaque-path-fragment-with-query
   parse-custom-scheme-relative-path
   parse-custom-scheme-relative-path-empty-host
-  parse-custom-scheme-relative-path-host-no-path
   parse-custom-scheme-relative-path-host
+  parse-custom-scheme-relative-path-host-empty-path
+  parse-custom-scheme-relative-path-host-no-path
   parse-custom-scheme-root-path
   parse-custom-scheme-root-path-fragment
   parse-custom-scheme-root-path-query

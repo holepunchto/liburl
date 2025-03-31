@@ -176,6 +176,8 @@ url__shorten_path (url_t *url) {
 
   utf8_string_view_t path = url_get_path(url);
 
+  if (path.len == 0) return;
+
   size_t i = utf8_string_view_last_index_of_character(path, path.len - 1, '/');
 
   if (i == (size_t) -1) return;
