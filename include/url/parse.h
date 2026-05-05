@@ -213,7 +213,7 @@ url__is_double_dot_path_segment (const utf8_string_view_t path) {
   const utf8_t *data = path.data;
 
   // ..
-  if (len == 2 && data[0] == '.' && data[0] == '.') {
+  if (len == 2 && data[0] == '.' && data[1] == '.') {
     return true;
   }
 
@@ -337,11 +337,17 @@ url__parse_ipv4 (utf8_string_view_t input, utf8_string_t *result) {
     if (value == (uint64_t) -1) goto err;
 
     if (i == (size_t) -1) {
-      size_t bits = 32 - parts * 8;
+      if (parts == 0) {
+        if (value > UINT32_MAX) goto err;
 
-      if (value > (1 << bits)) goto err;
+        address = (uint32_t) value;
+      } else {
+        size_t bits = 32 - parts * 8;
 
-      address = (address << bits) | value;
+        if (value >= ((uint64_t) 1 << bits)) goto err;
+
+        address = (address << bits) | (uint32_t) value;
+      }
 
       break;
     }
