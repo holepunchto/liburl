@@ -65,6 +65,8 @@ list(APPEND tests
   parse-http-scheme-relative-bare-path
   parse-http-scheme-relative-path
   parse-http-scheme-relative-path-with-scheme
+  parse-http-scheme-relative-percent-encoded-forbidden-host
+  parse-http-scheme-relative-userinfo-idempotence
   parse-http-scheme-username
   parse-http-scheme-username-password
   parse-http-scheme-username-password-percent-encode
@@ -92,3 +94,5 @@ foreach(test IN LISTS tests)
     TIMEOUT 30
   )
 endforeach()
+
+add_subdirectory(fuzz)

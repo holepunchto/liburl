@@ -521,13 +521,6 @@ url__parse_host (const utf8_string_view_t input, bool is_opaque, utf8_string_t *
 
   assert(input.len != 0);
 
-  if (!url__contains_from_character_set(url__forbidden_domain_character_set, input)) {
-    err = utf8_string_append_view(result, input);
-    if (err < 0) return err;
-
-    return 0;
-  }
-
   utf8_string_t domain;
   utf8_string_init(&domain);
 
@@ -537,6 +530,11 @@ url__parse_host (const utf8_string_view_t input, bool is_opaque, utf8_string_t *
   // TODO Domain to ASCII
 
   utf8_string_t ascii_domain = domain;
+
+  if (url__contains_from_character_set(url__forbidden_domain_character_set, utf8_string_view(&ascii_domain))) {
+    err = -1;
+    goto err;
+  }
 
   if (url__ends_in_a_number(utf8_string_view(&ascii_domain))) {
     err = url__parse_ipv4(utf8_string_view(&ascii_domain), result);
@@ -1008,15 +1006,17 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
           url->components.username_end = url->href.len;
         }
 
-        err = utf8_string_append_character(&url->href, '@');
-        if (err < 0) goto err;
-
         utf8_string_clear(&buffer);
       } else if (
         (c == -1 || c == 0x2f || c == 0x3f || c == 0x23) ||
         (url__is_special(url) && c == 0x5c)
       ) {
         if (at_sign_seen && utf8_string_empty(&buffer)) goto err;
+
+        if (at_sign_seen) {
+          err = utf8_string_append_character(&url->href, '@');
+          if (err < 0) goto err;
+        }
 
         pointer -= buffer.len + 1;
 
