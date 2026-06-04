@@ -28,7 +28,7 @@ url__type (const utf8_string_view_t scheme) {
   // ws(s)
   if (len >= 2 && data[0] == 'w' && data[1] == 's') {
     if (len == 2) return url_type_ws;
-    if (len == 3 && data[2] == 's') return url_type_https;
+    if (len == 3 && data[2] == 's') return url_type_wss;
     return url_type_opaque;
   }
 
