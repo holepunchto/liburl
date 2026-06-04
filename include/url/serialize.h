@@ -48,7 +48,7 @@ url__serialize_ipv6 (uint16_t address[8], utf8_string_t *result) {
 
       uint8_t count = next - i;
 
-      if (compress_length < count) {
+      if (count > 1 && compress_length < count) {
         compress_length = count;
         compress = i;
         if (next == 8) break;

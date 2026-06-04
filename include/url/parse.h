@@ -389,6 +389,7 @@ url__parse_ipv6 (utf8_string_view_t input, utf8_string_t *result) {
 
       pointer++;
       compress = ++piece_index;
+      continue;
     }
 
     uint16_t value = 0, length = 0;
@@ -1313,6 +1314,20 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
         }
 
         utf8_string_clear(&buffer);
+
+        if (
+          (c == -1 || c == 0x3f || c == 0x23) &&
+          !url__is_special(url) &&
+          url->components.username_end == url->components.scheme_end + 1 /* : */ &&
+          url->href.len > url->components.path_start + 1 &&
+          url->href.data[url->components.path_start] == '/' &&
+          url->href.data[url->components.path_start + 1] == '/'
+        ) {
+          err = utf8_string_insert_literal(&url->href, url->components.path_start, (utf8_t *) "/.", 2);
+          if (err < 0) goto err;
+
+          url->components.path_start += 2;
+        }
 
         if (c == 0x3f) {
           state = url_state_query;
