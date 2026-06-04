@@ -129,13 +129,13 @@ url__is_ascii_alphanumeric (utf8_t c) {
 // https://infra.spec.whatwg.org/#ascii-lowercase
 static inline utf8_t
 url__to_ascii_lowercase (utf8_t c) {
-  return c | 0x20;
+  return url__is_ascii_upper_alpha(c) ? c | 0x20 : c;
 }
 
 // https://infra.spec.whatwg.org/#ascii-uppercase
 static inline utf8_t
 url__to_ascii_uppercase (utf8_t c) {
-  return c & ~0x20;
+  return url__is_ascii_lower_alpha(c) ? c & ~0x20 : c;
 }
 
 #endif // URL_INFRA_H
