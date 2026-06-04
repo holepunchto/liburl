@@ -61,6 +61,7 @@ list(APPEND tests
   parse-http-scheme-password
   parse-http-scheme-port
   parse-http-scheme-port-default
+  parse-http-scheme-port-overflow
   parse-http-scheme-protocol-relative
   parse-http-scheme-query
   parse-http-scheme-query-percent-encode
