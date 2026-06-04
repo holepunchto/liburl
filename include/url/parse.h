@@ -1098,9 +1098,9 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
 
           for (size_t i = 0, n = buffer.len; i < n; i++) {
             port = port * 10 + (buffer.data[i] - 0x30);
-          }
 
-          if (port > UINT16_MAX) goto err;
+            if (port > UINT16_MAX) goto err;
+          }
 
           uint32_t default_port = url__default_port(url->type);
 
