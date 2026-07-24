@@ -534,7 +534,11 @@ url__parse_host (const utf8_string_view_t input, bool is_opaque, utf8_string_t *
   err = url__percent_decode_string(input, &domain);
   if (err < 0) goto err;
 
-  // TODO Domain to ASCII
+  // TODO Full domain to ASCII (UTS #46 mapping, NFC, Punycode); ASCII case
+  // folding only for now
+  for (size_t i = 0; i < domain.len; i++) {
+    domain.data[i] = url__to_ascii_lowercase(domain.data[i]);
+  }
 
   utf8_string_t ascii_domain = domain;
 
