@@ -60,6 +60,7 @@ list(APPEND tests
   parse-http-scheme-host-ipv6
   parse-http-scheme-host-ipv6-overflow
   parse-http-scheme-host-mixed-case-path-preserved
+  parse-http-scheme-host-non-ascii-unchanged
   parse-http-scheme-host-uppercase
   parse-http-scheme-password
   parse-http-scheme-port
