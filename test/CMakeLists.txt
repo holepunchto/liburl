@@ -2,6 +2,7 @@ list(APPEND tests
   parse-non-special-scheme-double-slash-path-idempotence
   parse-non-special-scheme-trailing-dot-segment-idempotence
   parse-custom-scheme-fragment
+  parse-custom-scheme-host-uppercase-preserved
   parse-custom-scheme-query
   parse-custom-scheme-query-fragment
   parse-custom-scheme-relative-absolute-path
@@ -58,6 +59,9 @@ list(APPEND tests
   parse-http-scheme-host-ipv4
   parse-http-scheme-host-ipv6
   parse-http-scheme-host-ipv6-overflow
+  parse-http-scheme-host-mixed-case-path-preserved
+  parse-http-scheme-host-non-ascii-unchanged
+  parse-http-scheme-host-uppercase
   parse-http-scheme-password
   parse-http-scheme-port
   parse-http-scheme-port-default
