@@ -5,8 +5,7 @@
 #include <stdint.h>
 #include <url/unicode-tables.h>
 #include <utf.h>
-
-#include "code-point.h"
+#include <utf/string.h>
 
 /**
  * The constants of the algorithmic Hangul syllable decomposition.
@@ -113,29 +112,29 @@ url__unicode_is_virama (utf32_t c) {
  * https://www.unicode.org/reports/tr15/#Canonical_Decomposition
  */
 static inline int
-url__unicode_decompose (utf32_t c, url_code_points_t *result) {
+url__unicode_decompose (utf32_t c, utf32_string_t *result) {
   int err;
 
   if (c >= url__unicode_hangul_s_base && c < url__unicode_hangul_s_base + url__unicode_hangul_s_count) {
     uint32_t index = c - url__unicode_hangul_s_base;
 
-    err = url__code_points_append(result, url__unicode_hangul_l_base + index / url__unicode_hangul_n_count);
+    err = utf32_string_append_character(result, url__unicode_hangul_l_base + index / url__unicode_hangul_n_count);
     if (err < 0) return err;
 
-    err = url__code_points_append(result, url__unicode_hangul_v_base + (index % url__unicode_hangul_n_count) / url__unicode_hangul_t_count);
+    err = utf32_string_append_character(result, url__unicode_hangul_v_base + (index % url__unicode_hangul_n_count) / url__unicode_hangul_t_count);
     if (err < 0) return err;
 
     uint32_t t = index % url__unicode_hangul_t_count;
 
     if (t != 0) {
-      err = url__code_points_append(result, url__unicode_hangul_t_base + t);
+      err = utf32_string_append_character(result, url__unicode_hangul_t_base + t);
       if (err < 0) return err;
     }
 
     return 0;
   }
 
-  if (c < URL__UNICODE_FIRST_DECOMPOSABLE) return url__code_points_append(result, c);
+  if (c < URL__UNICODE_FIRST_DECOMPOSABLE) return utf32_string_append_character(result, c);
 
   size_t block = c >> URL_UNICODE_BLOCK_SHIFT;
 
@@ -151,7 +150,7 @@ url__unicode_decompose (utf32_t c, url_code_points_t *result) {
     } else if (entry->code_point > c) {
       hi = mid;
     } else {
-      return url__code_points_append_many(
+      return utf32_string_append_literal(
         result,
         &url__unicode_decomposition_data[entry->decomposition & 0xffffff],
         entry->decomposition >> 24
@@ -159,7 +158,7 @@ url__unicode_decompose (utf32_t c, url_code_points_t *result) {
     }
   }
 
-  return url__code_points_append(result, c);
+  return utf32_string_append_character(result, c);
 }
 
 /**
@@ -278,7 +277,7 @@ url__unicode_recompose (utf32_t *data, size_t len) {
  * https://www.unicode.org/reports/tr15/#Description_Norm
  */
 static inline int
-url__unicode_normalize (const utf32_t *input, size_t len, url_code_points_t *result) {
+url__unicode_normalize (const utf32_t *input, size_t len, utf32_string_t *result) {
   int err;
 
   size_t start = result->len;

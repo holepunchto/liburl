@@ -25,7 +25,6 @@ target_sources(
   INTERFACE
     include/url.h
     include/url/character-set.h
-    include/url/code-point.h
     include/url/idna.h
     include/url/infra.h
     include/url/parse.h

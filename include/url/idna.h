@@ -6,7 +6,6 @@
 #include <utf.h>
 #include <utf/string.h>
 
-#include "code-point.h"
 #include "infra.h"
 #include "punycode.h"
 #include "unicode.h"
@@ -272,16 +271,16 @@ url__idna_to_ascii (utf8_string_view_t input, utf8_string_t *result) {
   // rejected without decoding it.
   if (!utf8_validate(input.data, input.len)) return -1;
 
-  url_code_points_t decoded, normalized, converted, label;
+  utf32_string_t decoded, normalized, converted, label;
 
-  url__code_points_init(&decoded);
-  url__code_points_init(&normalized);
-  url__code_points_init(&converted);
-  url__code_points_init(&label);
+  utf32_string_init(&decoded);
+  utf32_string_init(&normalized);
+  utf32_string_init(&converted);
+  utf32_string_init(&label);
 
   bool bidi = false;
 
-  err = url__code_points_reserve(&decoded, utf32_length_from_utf8(input.data, input.len));
+  err = utf32_string_reserve(&decoded, utf32_length_from_utf8(input.data, input.len));
   if (err < 0) goto err;
 
   decoded.len = utf8_convert_to_utf32(input.data, input.len, decoded.data);
@@ -324,7 +323,7 @@ url__idna_to_ascii (utf8_string_view_t input, utf8_string_t *result) {
     if (i != normalized.len && normalized.data[i] != '.') continue;
 
     if (start > 0) {
-      err = url__code_points_append(&converted, '.');
+      err = utf32_string_append_character(&converted, '.');
       if (err < 0) goto err;
     }
 
@@ -334,7 +333,7 @@ url__idna_to_ascii (utf8_string_view_t input, utf8_string_t *result) {
       // A Punycode encoded label may not contain a non-ASCII code point.
       if (!url__idna_is_ascii(&normalized.data[start], i - start)) goto err;
 
-      url__code_points_clear(&label);
+      utf32_string_clear(&label);
 
       err = url__punycode_decode(
         &normalized.data[start + URL__IDNA_ACE_PREFIX_LEN],
@@ -356,7 +355,7 @@ url__idna_to_ascii (utf8_string_view_t input, utf8_string_t *result) {
       if (converted.len - offset != label.len) goto err;
       if (memcmp(&converted.data[offset], label.data, label.len * sizeof(utf32_t)) != 0) goto err;
     } else {
-      err = url__code_points_append_many(&converted, &normalized.data[start], i - start);
+      err = utf32_string_append_literal(&converted, &normalized.data[start], i - start);
       if (err < 0) goto err;
     }
 
@@ -429,10 +428,10 @@ err:
   err = -1;
 
 done:
-  url__code_points_destroy(&decoded);
-  url__code_points_destroy(&normalized);
-  url__code_points_destroy(&converted);
-  url__code_points_destroy(&label);
+  utf32_string_destroy(&decoded);
+  utf32_string_destroy(&normalized);
+  utf32_string_destroy(&converted);
+  utf32_string_destroy(&label);
 
   return err;
 }

@@ -6,8 +6,6 @@
 #include <utf.h>
 #include <utf/string.h>
 
-#include "code-point.h"
-
 /**
  * The bootstring parameters for Punycode.
  *
@@ -74,7 +72,7 @@ url__punycode_threshold (uint32_t k, uint32_t bias) {
  * https://www.rfc-editor.org/rfc/rfc3492#section-6.2
  */
 static inline int
-url__punycode_decode (const utf32_t *input, size_t len, url_code_points_t *result) {
+url__punycode_decode (const utf32_t *input, size_t len, utf32_string_t *result) {
   int err;
 
   size_t written = result->len;
@@ -90,7 +88,7 @@ url__punycode_decode (const utf32_t *input, size_t len, url_code_points_t *resul
   for (size_t i = 0; i < literal; i++) {
     if (input[i] >= url__punycode_initial_n) return -1;
 
-    err = url__code_points_append(result, input[i]);
+    err = utf32_string_append_character(result, input[i]);
     if (err < 0) return err;
   }
 
@@ -134,7 +132,7 @@ url__punycode_decode (const utf32_t *input, size_t len, url_code_points_t *resul
 
     if (n > 0x10ffff || (n >= 0xd800 && n <= 0xdfff)) return -1;
 
-    err = url__code_points_insert(result, written + i, n);
+    err = utf32_string_insert_character(result, written + i, n);
     if (err < 0) return err;
 
     i++;
