@@ -40,7 +40,11 @@ list(APPEND tests
   parse-file-scheme-double-dot-middle
   parse-file-scheme-double-dot-root-path
   parse-file-scheme-drive-letter
+  parse-file-scheme-drive-letter-double-dot-end
+  parse-file-scheme-drive-letter-empty-path
+  parse-file-scheme-drive-letter-fragment
   parse-file-scheme-drive-letter-normalize
+  parse-file-scheme-drive-letter-query
   parse-file-scheme-empty-path
   parse-file-scheme-empty-path-fragment
   parse-file-scheme-fragment
@@ -56,15 +60,29 @@ list(APPEND tests
   parse-file-scheme-root-path
   parse-http-scheme
   parse-http-scheme-base
+  parse-http-scheme-extra-slashes
+  parse-http-scheme-host-idna
+  parse-http-scheme-host-idna-ascii-preserved
+  parse-http-scheme-host-idna-case-folded
+  parse-http-scheme-host-idna-deviation
+  parse-http-scheme-host-idna-ignored
+  parse-http-scheme-host-idna-invalid
+  parse-http-scheme-host-idna-label-separator
+  parse-http-scheme-host-idna-mapped-to-ascii
+  parse-http-scheme-host-idna-normalized
+  parse-http-scheme-host-idna-punycode
   parse-http-scheme-host-ipv4
   parse-http-scheme-host-ipv6
   parse-http-scheme-host-ipv6-overflow
+  parse-http-scheme-host-ipv6-port
   parse-http-scheme-host-mixed-case-path-preserved
-  parse-http-scheme-host-non-ascii-unchanged
   parse-http-scheme-host-uppercase
   parse-http-scheme-password
+  parse-http-scheme-password-at-sign
   parse-http-scheme-port
   parse-http-scheme-port-default
+  parse-http-scheme-port-leading-zeros
+  parse-http-scheme-port-leading-zeros-default
   parse-http-scheme-port-overflow
   parse-http-scheme-protocol-relative
   parse-http-scheme-query
@@ -76,9 +94,12 @@ list(APPEND tests
   parse-http-scheme-relative-percent-encoded-forbidden-host
   parse-http-scheme-relative-userinfo-idempotence
   parse-http-scheme-username
+  parse-http-scheme-username-at-sign
   parse-http-scheme-username-password
   parse-http-scheme-username-password-percent-encode
   parse-http-scheme-username-percent-encode
+  parse-invalid-host
+  parse-invalid-port
 )
 
 foreach(test IN LISTS tests)
@@ -102,5 +123,25 @@ foreach(test IN LISTS tests)
     TIMEOUT 30
   )
 endforeach()
+
+add_executable(idna-conformance idna-conformance.c)
+
+target_link_libraries(
+  idna-conformance
+  PRIVATE
+    url_static
+)
+
+add_test(
+  NAME idna-conformance
+  COMMAND idna-conformance "${url_unicode_data}/IdnaTestV2.txt"
+  WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+)
+
+set_tests_properties(
+  idna-conformance
+  PROPERTIES
+  TIMEOUT 60
+)
 
 add_subdirectory(fuzz)
