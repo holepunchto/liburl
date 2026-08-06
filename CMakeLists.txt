@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.25)
+cmake_minimum_required(VERSION 4.0)
 
 find_package(cmake-fetch REQUIRED PATHS node_modules/cmake-fetch)
 find_package(cmake-fuzz REQUIRED PATHS node_modules/cmake-fuzz)
@@ -6,6 +6,7 @@ find_package(cmake-fuzz REQUIRED PATHS node_modules/cmake-fuzz)
 project(url C)
 
 fetch_package("github:holepunchto/libutf")
+fetch_package("github:holepunchto/libidna")
 
 add_library(url OBJECT)
 
@@ -35,6 +36,7 @@ target_include_directories(
   PUBLIC
     include
     $<TARGET_PROPERTY:utf,INTERFACE_INCLUDE_DIRECTORIES>
+    $<TARGET_PROPERTY:idna,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 add_library(url_shared SHARED)
@@ -51,6 +53,7 @@ target_link_libraries(
   PUBLIC
     url
     utf_shared
+    idna_shared
 )
 
 add_library(url_static STATIC)
@@ -67,6 +70,7 @@ target_link_libraries(
   PUBLIC
     url
     utf_static
+    idna_static
 )
 
 install(TARGETS url_shared url_static)
@@ -77,6 +81,7 @@ install(DIRECTORY include/url DESTINATION include)
 
 if(PROJECT_IS_TOP_LEVEL)
   enable_testing()
+
   add_subdirectory(bench)
   add_subdirectory(test)
 endif()

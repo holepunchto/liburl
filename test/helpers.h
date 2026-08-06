@@ -15,6 +15,16 @@
     printf("%.*s\n", (int) href.len, href.data); \
   }
 
+#define test_parse_failure(input, base) \
+  { \
+    url_t url; \
+    url_init(&url); \
+    int e = url_parse(&url, (utf8_t *) input, -1, base); \
+    assert(e != 0); \
+    printf("%s\n", input); \
+    url_destroy(&url); \
+  }
+
 #define test_get(url, component, expected) \
   utf8_string_view_t component; \
   { \

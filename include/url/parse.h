@@ -2,6 +2,7 @@
 #define URL_PARSE_H
 
 #include <assert.h>
+#include <idna.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -108,7 +109,67 @@ static url_character_set_t url__forbidden_domain_character_set = {
   0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
   // 70    71     72     73     74     75     76     77
   0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
-  // 78    79     7a     7b     7c
+  // 78    79     7a     7b     7c     7d     7e     7f
+  0x00 | 0x00 | 0x00 | 0x00 | 0x10 | 0x00 | 0x00 | 0x80,
+};
+
+/**
+ * The code points that delimit the authority of a URL, and so also its host, as
+ * well as every segment of its path.
+ *
+ * https://url.spec.whatwg.org/#authority-state
+ * https://url.spec.whatwg.org/#path-state
+ */
+static url_character_set_t url__delimiter_character_set = {
+  // 00    01     02     03     04     05     06     07
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 08    09     0a     0b     0c     0d     0e     0f
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 10    11     12     13     14     15     16     17
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 18    19     1a     1b     1c     1d     1e     1f
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 20    21     22     23     24     25     26     27
+  0x00 | 0x00 | 0x00 | 0x08 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 28    29     2a     2b     2c     2d     2e     2f
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x80,
+  // 30    31     32     33     34     35     36     37
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 38    39     3a     3b     3c     3d     3e     3f
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x80,
+};
+
+/**
+ * The code points that delimit the authority and the path segments of a special
+ * URL, a backslash standing in for a slash in one.
+ *
+ * https://url.spec.whatwg.org/#authority-state
+ * https://url.spec.whatwg.org/#path-state
+ */
+static url_character_set_t url__special_delimiter_character_set = {
+  // 00    01     02     03     04     05     06     07
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 08    09     0a     0b     0c     0d     0e     0f
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 10    11     12     13     14     15     16     17
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 18    19     1a     1b     1c     1d     1e     1f
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 20    21     22     23     24     25     26     27
+  0x00 | 0x00 | 0x00 | 0x08 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 28    29     2a     2b     2c     2d     2e     2f
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x80,
+  // 30    31     32     33     34     35     36     37
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 38    39     3a     3b     3c     3d     3e     3f
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x80,
+  // 40    41     42     43     44     45     46     47
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 48    49     4a     4b     4c     4d     4e     4f
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 50    51     52     53     54     55     56     57
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 58    59     5a     5b     5c
   0x00 | 0x00 | 0x00 | 0x00 | 0x10,
 };
 
@@ -320,7 +381,7 @@ err:
 
 // https://url.spec.whatwg.org/#concept-ipv4-parser
 static inline int
-url__parse_ipv4 (utf8_string_view_t input, utf8_string_t *result) {
+url__parse_ipv4 (utf8_string_view_t input, uint32_t *result) {
   uint32_t address = 0;
 
   uint8_t parts = 0;
@@ -359,7 +420,9 @@ url__parse_ipv4 (utf8_string_view_t input, utf8_string_t *result) {
     parts++;
   }
 
-  return url__serialize_ipv4(address, result);
+  *result = address;
+
+  return 0;
 
 err:
   return -1;
@@ -513,6 +576,66 @@ url__parse_opaque_host (const utf8_string_view_t input, utf8_string_t *result) {
   return url__percent_encode_string(input, url__c0_control_percent_encode_set, result);
 }
 
+/**
+ * Percent decodes a domain and converts it to ASCII, appending the result.
+ *
+ * This is the path taken by a domain that is percent encoded, non-ASCII, or
+ * both, and so needs a copy to work on; see `url__parse_host` for the one that
+ * every other domain takes.
+ */
+static inline int
+url__parse_domain (const utf8_string_view_t input, utf8_string_t *result) {
+  int err;
+
+  utf8_string_t domain;
+  utf8_string_init(&domain);
+
+  utf8_string_t converted;
+  utf8_string_init(&converted);
+
+  err = url__percent_decode_string(input, &domain);
+  if (err < 0) goto err;
+
+  utf8_t accumulator = 0;
+
+  for (size_t i = 0; i < domain.len; i++) {
+    utf8_t c = domain.data[i];
+
+    accumulator |= c;
+
+    // Lowercasing leaves everything but an uppercase ASCII letter alone, so it
+    // may be done before knowing whether the domain is ASCII. The mapping that
+    // the conversion below begins with would lowercase the very same letters.
+    domain.data[i] = url__to_ascii_lowercase(c);
+  }
+
+  // An ASCII domain is lowercased and left at that, regardless of what the
+  // conversion would have made of it, for web compatibility. Punycode can after
+  // all decode successfully and still fail the validity criteria, as is the case
+  // for xn--8i7caa, which decodes to the mapped code points of "ｗｗｗ".
+  if (accumulator & 0x80) {
+    err = idna_url_to_ascii(utf8_string_view(&domain), &converted);
+    if (err < 0) goto err;
+
+    err = utf8_string_append(result, &converted);
+    if (err < 0) goto err;
+  } else {
+    err = utf8_string_append(result, &domain);
+    if (err < 0) goto err;
+  }
+
+  utf8_string_destroy(&domain);
+  utf8_string_destroy(&converted);
+
+  return 0;
+
+err:
+  utf8_string_destroy(&domain);
+  utf8_string_destroy(&converted);
+
+  return -1;
+}
+
 // https://url.spec.whatwg.org/#concept-host-parser
 static inline int
 url__parse_host (const utf8_string_view_t input, bool is_opaque, utf8_string_t *result) {
@@ -528,41 +651,56 @@ url__parse_host (const utf8_string_view_t input, bool is_opaque, utf8_string_t *
 
   assert(input.len != 0);
 
-  utf8_string_t domain;
-  utf8_string_init(&domain);
+  // Optimization: A domain that is neither percent encoded nor non-ASCII, being
+  // the common case, needs no more than lowercasing, and so is written straight
+  // to the result rather than by way of a copy. `input` must for that reason not
+  // be a view over `result`.
+  size_t start = result->len;
 
-  err = url__percent_decode_string(input, &domain);
-  if (err < 0) goto err;
+  err = utf8_string_append_view(result, input);
+  if (err < 0) return err;
 
-  // TODO Full domain to ASCII (UTS #46 mapping, NFC, Punycode); ASCII case
-  // folding only for now, non-ASCII hostnames are left unchanged.
-  for (size_t i = 0; i < domain.len; i++) {
-    domain.data[i] = url__to_ascii_lowercase(domain.data[i]);
+  utf8_t accumulator = 0;
+
+  for (size_t i = start, n = result->len; i < n; i++) {
+    utf8_t c = result->data[i];
+
+    // A percent sign is folded into the accumulator as though it were non-ASCII
+    // so that the single test below catches both a domain that has to be decoded
+    // and one that has to be converted.
+    accumulator |= c | (utf8_t) ((c == 0x25) << 7);
+
+    result->data[i] = url__to_ascii_lowercase(c);
   }
 
-  utf8_string_t ascii_domain = domain;
+  if (accumulator & 0x80) {
+    result->len = start;
 
-  if (url__contains_from_character_set(url__forbidden_domain_character_set, utf8_string_view(&ascii_domain))) {
-    err = -1;
-    goto err;
+    err = url__parse_domain(input, result);
+    if (err < 0) return err;
   }
 
-  if (url__ends_in_a_number(utf8_string_view(&ascii_domain))) {
-    err = url__parse_ipv4(utf8_string_view(&ascii_domain), result);
-    if (err < 0) goto err;
-  } else {
-    err = utf8_string_append(result, &ascii_domain);
-    if (err < 0) goto err;
-  }
+  utf8_string_view_t domain = utf8_string_substring(result, start, result->len);
 
-  utf8_string_destroy(&domain);
+  if (domain.len == 0) return -1;
+
+  if (url__contains_from_character_set(url__forbidden_domain_character_set, domain)) return -1;
+
+  if (url__ends_in_a_number(domain)) {
+    uint32_t address;
+
+    // The domain is fully parsed before the address is serialized in its place,
+    // as the two share the storage that `domain` is a view over.
+    err = url__parse_ipv4(domain, &address);
+    if (err < 0) return err;
+
+    result->len = start;
+
+    err = url__serialize_ipv4(address, result);
+    if (err < 0) return err;
+  }
 
   return 0;
-
-err:
-  utf8_string_destroy(&domain);
-
-  return -1;
 }
 
 static inline int
@@ -571,13 +709,12 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
 
   url_state_t state = url_state_scheme_start;
 
-  utf8_string_t buffer;
-  utf8_string_init(&buffer);
-
   err = utf8_string_reserve(&url->href, input.len);
   if (err < 0) goto err;
 
-  bool at_sign_seen = false, inside_brackets = false, password_token_seen = false;
+  // The end of the authority, as found by the authority state for the host state
+  // that always follows it.
+  size_t authority_end = 0;
 
   for (size_t pointer = 0, n = input.len; pointer <= n; pointer++) {
     int16_t c = pointer < n ? input.data[pointer] : -1;
@@ -986,17 +1123,37 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
       break;
 
     // https://url.spec.whatwg.org/#authority-state
-    case url_state_authority:
-      if (c == 0x40) {
-        if (at_sign_seen) {
-          err = utf8_string_prepend_literal(&buffer, (utf8_t *) "%40", 3);
-          if (err < 0) goto err;
-        }
+    case url_state_authority: {
+      // Optimization: The authority ends at the first slash, question mark, or
+      // number sign, with a backslash also ending that of a special URL. Finding
+      // its end up front lets the userinfo and the host each be handled in one
+      // go, rather than buffering the authority a byte at a time only to scan the
+      // host a second time in the host state.
+      url_character_set_t *delimiters = url__is_special(url)
+                                          ? &url__special_delimiter_character_set
+                                          : &url__delimiter_character_set;
 
-        at_sign_seen = true;
+      authority_end = pointer;
 
-        for (size_t i = 0, n = buffer.len; i < n; i++) {
-          utf8_t c = buffer.data[i];
+      while (authority_end < n && !url__is_in_character_set(*delimiters, input.data[authority_end])) {
+        authority_end++;
+      }
+
+      // The userinfo is everything up to the last commercial at, the host making
+      // up the remainder of the authority.
+      size_t at_sign = (size_t) -1;
+
+      for (size_t i = pointer; i < authority_end; i++) {
+        if (input.data[i] == 0x40) at_sign = i;
+      }
+
+      if (at_sign != (size_t) -1) {
+        bool password_token_seen = false;
+
+        // A commercial at within the userinfo is in the userinfo percent encode
+        // set, and so is encoded along with everything else.
+        for (size_t i = pointer; i < at_sign; i++) {
+          utf8_t c = input.data[i];
 
           if (c == 0x3a && !password_token_seen) {
             password_token_seen = true;
@@ -1017,120 +1174,116 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
           url->components.username_end = url->href.len;
         }
 
-        utf8_string_clear(&buffer);
-      } else if (
-        (c == -1 || c == 0x2f || c == 0x3f || c == 0x23) ||
-        (url__is_special(url) && c == 0x5c)
-      ) {
-        if (at_sign_seen && utf8_string_empty(&buffer)) goto err;
+        // The host must not be empty if a userinfo precedes it.
+        if (at_sign + 1 == authority_end) goto err;
 
-        if (at_sign_seen) {
-          err = utf8_string_append_character(&url->href, '@');
-          if (err < 0) goto err;
-        }
-
-        pointer -= buffer.len + 1;
-
-        utf8_string_clear(&buffer);
-
-        state = url_state_host;
-      } else {
-        err = utf8_string_append_character(&buffer, c);
+        err = utf8_string_append_character(&url->href, '@');
         if (err < 0) goto err;
+
+        pointer = at_sign;
+      } else {
+        pointer--;
       }
+
+      state = url_state_host;
       break;
+    }
 
     // https://url.spec.whatwg.org/#host-state
     case url_state_host:
     // https://url.spec.whatwg.org/#hostname-state
-    case url_state_hostname:
-      if (c == 0x3a && !inside_brackets) {
-        if (utf8_string_empty(&buffer)) goto err;
+    case url_state_hostname: {
+      // The host runs to the port separator, if there is one, and otherwise to
+      // the end of the authority that the authority state found. A colon within
+      // brackets belongs to an IPv6 address rather than separating a port.
+      size_t host_end = pointer;
 
-        uint32_t host_start = url->href.len;
+      bool inside_brackets = false;
 
-        err = url__parse_host(utf8_string_view(&buffer), !url__is_special(url), &url->href);
-        if (err < 0) goto err;
+      while (host_end < authority_end) {
+        utf8_t c = input.data[host_end];
 
-        url->components.host_start = host_start;
-        url->components.host_end = url->href.len;
-
-        utf8_string_clear(&buffer);
-
-        state = url_state_port;
-      } else if (
-        (c == -1 || c == 0x2f || c == 0x3f || c == 0x23) ||
-        (url__is_special(url) && c == 0x5c)
-      ) {
-        pointer--;
-
-        if (url__is_special(url) && utf8_string_empty(&buffer)) goto err;
-
-        uint32_t host_start = url->href.len;
-
-        err = url__parse_host(utf8_string_view(&buffer), !url__is_special(url), &url->href);
-        if (err < 0) goto err;
-
-        url->components.host_start = host_start;
-        url->components.host_end = url->href.len;
-
-        utf8_string_clear(&buffer);
-
-        url->components.path_start = url->href.len;
-
-        state = url_state_path_start;
-      } else {
         if (c == 0x5b) inside_brackets = true;
         else if (c == 0x5d) inside_brackets = false;
+        else if (c == 0x3a && !inside_brackets) break;
 
-        err = utf8_string_append_character(&buffer, c);
-        if (err < 0) goto err;
+        host_end++;
       }
-      break;
 
-    // https://url.spec.whatwg.org/#port-state
-    case url_state_port:
-      if (url__is_ascii_digit(c)) {
-        err = utf8_string_append_character(&buffer, c);
-        if (err < 0) goto err;
-      } else if (
-        (c == -1 || c == 0x2f || c == 0x3f || c == 0x23) ||
-        (url__is_special(url) && c == 0x5c)
-      ) {
-        if (!utf8_string_empty(&buffer)) {
-          uint32_t port = 0;
+      bool port_seen = host_end != authority_end;
 
-          for (size_t i = 0, n = buffer.len; i < n; i++) {
-            port = port * 10 + (buffer.data[i] - 0x30);
+      // An empty host is only allowed in a URL that is neither special nor has a
+      // port.
+      if (host_end == pointer && (url__is_special(url) || port_seen)) goto err;
 
-            if (port > UINT16_MAX) goto err;
-          }
+      uint32_t host_start = url->href.len;
 
-          uint32_t default_port = url__default_port(url->type);
+      err = url__parse_host(utf8_string_view_substring(input, pointer, host_end), !url__is_special(url), &url->href);
+      if (err < 0) goto err;
 
-          if (port == default_port) {
-            url->components.port = (uint32_t) -1;
-          } else {
-            err = utf8_string_append_character(&url->href, ':');
-            if (err < 0) goto err;
+      url->components.host_start = host_start;
+      url->components.host_end = url->href.len;
 
-            err = utf8_string_append(&url->href, &buffer);
-            if (err < 0) goto err;
+      if (port_seen) {
+        pointer = host_end;
 
-            url->components.port = port;
-          }
-
-          utf8_string_clear(&buffer);
-        }
+        state = url_state_port;
+      } else {
+        pointer = authority_end - 1;
 
         url->components.path_start = url->href.len;
 
         state = url_state_path_start;
-        pointer--;
-      } else {
-        goto err;
       }
       break;
+    }
+
+    // https://url.spec.whatwg.org/#port-state
+    case url_state_port: {
+      // Optimization: The port is the run of digits that follows the host, and so
+      // is accumulated as it is scanned rather than buffered and then converted.
+      uint32_t port = 0;
+
+      size_t end = pointer;
+
+      while (end < n && url__is_ascii_digit(input.data[end])) {
+        port = port * 10 + (input.data[end] - 0x30);
+
+        if (port > UINT16_MAX) goto err;
+
+        end++;
+      }
+
+      url_character_set_t *delimiters = url__is_special(url)
+                                          ? &url__special_delimiter_character_set
+                                          : &url__delimiter_character_set;
+
+      // Only a delimiter may follow the port.
+      if (end < n && !url__is_in_character_set(*delimiters, input.data[end])) goto err;
+
+      if (end != pointer) {
+        if (port == url__default_port(url->type)) {
+          url->components.port = (uint32_t) -1;
+        } else {
+          err = utf8_string_append_character(&url->href, ':');
+          if (err < 0) goto err;
+
+          // The port is serialized from its value, and so without the leading
+          // zeros that it may have been written with.
+          err = url__serialize_port((uint16_t) port, &url->href);
+          if (err < 0) goto err;
+
+          url->components.port = port;
+        }
+      }
+
+      url->components.path_start = url->href.len;
+
+      pointer = end - 1;
+
+      state = url_state_path_start;
+      break;
+    }
 
     // https://url.spec.whatwg.org/#file-state
     case url_state_file:
@@ -1227,40 +1380,45 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
       break;
 
     // https://url.spec.whatwg.org/#file-host-state
-    case url_state_file_host:
-      if (c == -1 || c == 0x2f || c == 0x5c || c == 0x3f || c == 0x23) {
+    case url_state_file_host: {
+      // Optimization: The host of a file URL runs to the next delimiter, and so is
+      // handled in one go rather than a byte at a time. A file URL being special,
+      // a backslash delimits it as much as a slash does.
+      size_t end = pointer;
+
+      while (end < n && !url__is_in_character_set(url__special_delimiter_character_set, input.data[end])) {
+        end++;
+      }
+
+      utf8_string_view_t host = utf8_string_view_substring(input, pointer, end);
+
+      url->components.host_start = url->href.len;
+      url->components.host_end = url->href.len;
+
+      if (url__is_windows_drive_letter(host)) {
+        url->components.path_start = url->href.len;
+
+        // The drive letter turns out to be no host at all, and so is left to the
+        // path state to take as the first segment of the path.
         pointer--;
 
-        if (url__is_windows_drive_letter(utf8_string_view(&buffer))) {
-          url->components.host_start = url->href.len;
-          url->components.host_end = url->href.len;
-
-          url->components.path_start = url->href.len;
-
-          state = url_state_path;
-        } else {
-          url->components.host_start = url->href.len;
-
-          if (utf8_string_empty(&buffer)) {
-            url->components.host_end = url->href.len;
-          } else {
-            err = url__parse_host(utf8_string_view(&buffer), !url__is_special(url), &url->href);
-            if (err < 0) goto err;
-
-            url->components.host_end = url->href.len;
-
-            utf8_string_clear(&buffer);
-          }
-
-          url->components.path_start = url->href.len;
-
-          state = url_state_path_start;
-        }
+        state = url_state_path;
       } else {
-        err = utf8_string_append_character(&buffer, c);
-        if (err < 0) goto err;
+        if (!utf8_string_view_empty(host)) {
+          err = url__parse_host(host, !url__is_special(url), &url->href);
+          if (err < 0) goto err;
+
+          url->components.host_end = url->href.len;
+        }
+
+        url->components.path_start = url->href.len;
+
+        pointer = end - 1;
+
+        state = url_state_path_start;
       }
       break;
+    }
 
     // https://url.spec.whatwg.org/#path-start-state
     case url_state_path_start:
@@ -1287,75 +1445,93 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
       break;
 
     // https://url.spec.whatwg.org/#path-state
-    case url_state_path:
-      if (
-        (c == -1 || c == 0x2f) ||
-        (url__is_special(url) && c == 0x5c) ||
-        (c == 0x3f || c == 0x23)
-      ) {
-        utf8_string_view_t segment = utf8_string_view(&buffer);
+    case url_state_path: {
+      // Optimization: A whole segment is handled at a time, it running to the
+      // next delimiter. The segment is written straight to the href, which is
+      // where the tests below read it back from in its encoded form, and where it
+      // already sits if it turns out to be a segment that is kept.
+      url_character_set_t *delimiters = url__is_special(url)
+                                          ? &url__special_delimiter_character_set
+                                          : &url__delimiter_character_set;
 
-        if (url__is_double_dot_path_segment(segment)) {
-          url__shorten_path(url);
+      size_t end = pointer;
 
-          if (c != 0x2f && !(url__is_special(url) && c == 0x5c)) {
-            err = utf8_string_append_character(&url->href, '/');
-            if (err < 0) goto err;
-          }
-        } else if (url__is_single_dot_path_segment(segment)) {
-          if (c != 0x2f && !(url__is_special(url) && c == 0x5c)) {
-            err = utf8_string_append_character(&url->href, '/');
-            if (err < 0) goto err;
-          }
-        } else {
-          if (
-            url->type == url_type_file &&
-            utf8_string_view_empty(url_get_path(url)) &&
-            url__is_windows_drive_letter(segment)
-          ) {
-            buffer.data[1] = ':';
-          }
+      while (end < n && !url__is_in_character_set(*delimiters, input.data[end])) {
+        end++;
+      }
 
+      int16_t delimiter = end < n ? input.data[end] : -1;
+
+      // The offset of the segment itself, the solidus that precedes it sitting
+      // one before.
+      size_t segment_start = url->href.len + 1;
+
+      err = utf8_string_append_character(&url->href, '/');
+      if (err < 0) goto err;
+
+      err = url__percent_encode_string(utf8_string_view_substring(input, pointer, end), url__path_percent_encode_set, &url->href);
+      if (err < 0) goto err;
+
+      utf8_string_view_t segment = utf8_string_substring(&url->href, segment_start, url->href.len);
+
+      // Whether the delimiter is one that separates two segments, and so already
+      // stands in for the solidus that a dot segment leaves behind.
+      bool separated = delimiter == 0x2f || (url__is_special(url) && delimiter == 0x5c);
+
+      if (url__is_double_dot_path_segment(segment)) {
+        url->href.len = segment_start - 1 /* / */;
+
+        url__shorten_path(url);
+
+        if (!separated) {
           err = utf8_string_append_character(&url->href, '/');
           if (err < 0) goto err;
+        }
+      } else if (url__is_single_dot_path_segment(segment)) {
+        url->href.len = segment_start - 1 /* / */;
 
-          err = utf8_string_append(&url->href, &buffer);
+        if (!separated) {
+          err = utf8_string_append_character(&url->href, '/');
           if (err < 0) goto err;
         }
+      } else if (
+        url->type == url_type_file &&
+        segment_start - 1 /* / */ == url->components.path_start &&
+        url__is_windows_drive_letter(segment)
+      ) {
+        url->href.data[segment_start + 1] = ':';
+      }
 
-        utf8_string_clear(&buffer);
-
-        if (
-          (c == -1 || c == 0x3f || c == 0x23) &&
-          !url__is_special(url) &&
-          url->components.username_end == url->components.scheme_end + 1 /* : */ &&
-          url->href.len > url->components.path_start + 1 &&
-          url->href.data[url->components.path_start] == '/' &&
-          url->href.data[url->components.path_start + 1] == '/'
-        ) {
-          err = utf8_string_insert_literal(&url->href, url->components.path_start, (utf8_t *) "/.", 2);
-          if (err < 0) goto err;
-
-          url->components.path_start += 2;
-        }
-
-        if (c == 0x3f) {
-          state = url_state_query;
-        } else if (c == 0x23) {
-          url->components.query_start = url->href.len + 1;
-
-          err = utf8_string_append_character(&url->href, '#');
-          if (err < 0) goto err;
-
-          url->components.fragment_start = url->href.len;
-
-          state = url_state_fragment;
-        }
-      } else {
-        err = url__percent_encode_character(c, url__path_percent_encode_set, &buffer);
+      if (
+        (delimiter == -1 || delimiter == 0x3f || delimiter == 0x23) &&
+        !url__is_special(url) &&
+        url->components.username_end == url->components.scheme_end + 1 /* : */ &&
+        url->href.len > url->components.path_start + 1 &&
+        url->href.data[url->components.path_start] == '/' &&
+        url->href.data[url->components.path_start + 1] == '/'
+      ) {
+        err = utf8_string_insert_literal(&url->href, url->components.path_start, (utf8_t *) "/.", 2);
         if (err < 0) goto err;
+
+        url->components.path_start += 2;
+      }
+
+      pointer = end;
+
+      if (delimiter == 0x3f) {
+        state = url_state_query;
+      } else if (delimiter == 0x23) {
+        url->components.query_start = url->href.len + 1;
+
+        err = utf8_string_append_character(&url->href, '#');
+        if (err < 0) goto err;
+
+        url->components.fragment_start = url->href.len;
+
+        state = url_state_fragment;
       }
       break;
+    }
 
     // https://url.spec.whatwg.org/#cannot-be-a-base-url-path-state
     case url_state_opaque_path:
@@ -1371,41 +1547,58 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
 
         state = url_state_fragment;
       } else if (c != -1) {
-        err = url__percent_encode_character(c, url__c0_control_percent_encode_set, &url->href);
+        // Optimization: An opaque path runs to the question mark or number sign
+        // that ends it, whichever comes first, and so may be encoded in one go
+        // rather than a byte at a time.
+        size_t query = utf8_string_view_index_of_character(input, pointer, '?');
+        size_t fragment = utf8_string_view_index_of_character(input, pointer, '#');
+
+        // Whichever comes first, an absent one being (size_t) -1 and so the
+        // larger of the two.
+        size_t end = query < fragment ? query : fragment;
+
+        if (end == (size_t) -1) end = n;
+
+        err = url__percent_encode_string(utf8_string_view_substring(input, pointer, end), url__c0_control_percent_encode_set, &url->href);
         if (err < 0) goto err;
+
+        pointer = end - 1;
       }
       break;
 
     // https://url.spec.whatwg.org/#query-state
-    case url_state_query:
-      if (c == 0x23 || c == -1) {
-        err = utf8_string_append_character(&url->href, '?');
+    case url_state_query: {
+      // Optimization: The query is everything from the current position until
+      // the next number sign, or the end of the string if there is none, and so
+      // may be encoded in one go rather than a byte at a time.
+      size_t end = utf8_string_view_index_of_character(input, pointer, '#');
+
+      if (end == (size_t) -1) end = n;
+
+      err = utf8_string_append_character(&url->href, '?');
+      if (err < 0) goto err;
+
+      url_character_set_t *query_percent_encode_set = url__is_special(url)
+                                                        ? &url__special_query_percent_encode_set
+                                                        : &url__query_percent_encode_set;
+
+      url->components.query_start = url->href.len;
+
+      err = url__percent_encode_string(utf8_string_view_substring(input, pointer, end), *query_percent_encode_set, &url->href);
+      if (err < 0) goto err;
+
+      url->components.fragment_start = url->href.len + 1;
+
+      pointer = end;
+
+      if (end != n) {
+        err = utf8_string_append_character(&url->href, '#');
         if (err < 0) goto err;
 
-        url_character_set_t *query_percent_encode_set = url__is_special(url)
-                                                          ? &url__special_query_percent_encode_set
-                                                          : &url__query_percent_encode_set;
-
-        url->components.query_start = url->href.len;
-
-        err = url__percent_encode_string(utf8_string_view(&buffer), *query_percent_encode_set, &url->href);
-        if (err < 0) goto err;
-
-        utf8_string_clear(&buffer);
-
-        url->components.fragment_start = url->href.len + 1;
-
-        if (c == 0x23) {
-          err = utf8_string_append_character(&url->href, '#');
-          if (err < 0) goto err;
-
-          state = url_state_fragment;
-        }
-      } else if (c != -1) {
-        err = utf8_string_append_character(&buffer, c);
-        if (err < 0) goto err;
+        state = url_state_fragment;
       }
       break;
+    }
 
     // https://url.spec.whatwg.org/#fragment-state
     case url_state_fragment:
@@ -1420,13 +1613,9 @@ url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
   }
 
 done:
-  utf8_string_destroy(&buffer);
-
   return 0;
 
 err:
-  utf8_string_destroy(&buffer);
-
   return -1;
 }
 
