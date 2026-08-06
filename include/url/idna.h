@@ -1,13 +1,13 @@
 #ifndef URL_IDNA_H
 #define URL_IDNA_H
 
+#include <punycode.h>
 #include <stdbool.h>
 #include <string.h>
 #include <utf.h>
 #include <utf/string.h>
 
 #include "infra.h"
-#include "punycode.h"
 #include "unicode.h"
 
 /**
@@ -333,14 +333,47 @@ url__idna_to_ascii (utf8_string_view_t input, utf8_string_t *result) {
       // A Punycode encoded label may not contain a non-ASCII code point.
       if (!url__idna_is_ascii(&normalized.data[start], i - start)) goto err;
 
+      size_t encoded_len = i - start - URL__IDNA_ACE_PREFIX_LEN;
+
       utf32_string_clear(&label);
 
-      err = url__punycode_decode(
+      // The decoder needs room for the most that the label could decode to, being
+      // as many code points as it was encoded from. That is more than it usually
+      // needs, so a label short enough to be decoded within this buffer is, which
+      // keeps the buffer above off the heap for as long as what comes out of the
+      // decoder fits in it. A domain name label runs to 63 code points at most,
+      // less the prefix that has already been taken off.
+      utf32_t buf[64];
+
+      utf32_t *decoded_label = buf;
+
+      if (encoded_len > sizeof(buf) / sizeof(utf32_t)) {
+        err = utf32_string_reserve(&label, utf32_max_length_from_punycode(encoded_len));
+        if (err < 0) goto err;
+
+        decoded_label = label.data;
+      }
+
+      size_t decoded_len;
+
+      // The basic code points of the label are handed to the decoder as they
+      // already stand, rather than narrowed to bytes first.
+      err = punycode_decode_utf32(
         &normalized.data[start + URL__IDNA_ACE_PREFIX_LEN],
-        i - start - URL__IDNA_ACE_PREFIX_LEN,
-        &label
+        encoded_len,
+        decoded_label,
+        &decoded_len
       );
       if (err < 0) goto err;
+
+      if (decoded_label == buf) {
+        // Now that the length is known, only that much of the buffer above is
+        // taken, which is what keeps a label of a usual length within it.
+        err = utf32_string_append_literal(&label, buf, decoded_len);
+        if (err < 0) goto err;
+      } else {
+        label.len = decoded_len;
+      }
 
       // A label that decodes to nothing, or to nothing but ASCII, had no
       // business being Punycode encoded to begin with.
@@ -413,8 +446,21 @@ url__idna_to_ascii (utf8_string_view_t input, utf8_string_t *result) {
       err = utf8_string_append_literal(result, (utf8_t *) URL__IDNA_ACE_PREFIX, URL__IDNA_ACE_PREFIX_LEN);
       if (err < 0) goto err;
 
-      err = url__punycode_encode(&converted.data[start], i - start, result);
+      size_t bound = punycode_max_length_from_utf32(i - start);
+
+      if (bound == (size_t) -1 || bound > SIZE_MAX - result->len) goto err;
+
+      // The label is encoded straight into the result, which is grown to the most
+      // that encoding it could call for beforehand.
+      err = utf8_string_reserve(result, result->len + bound);
       if (err < 0) goto err;
+
+      size_t encoded_len;
+
+      err = punycode_encode_utf8(&converted.data[start], i - start, &result->data[result->len], &encoded_len);
+      if (err < 0) goto err;
+
+      result->len += encoded_len;
     }
 
     start = i + 1;

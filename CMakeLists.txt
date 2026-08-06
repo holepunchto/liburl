@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.25)
+cmake_minimum_required(VERSION 4.0)
 
 find_package(cmake-fetch REQUIRED PATHS node_modules/cmake-fetch)
 find_package(cmake-fuzz REQUIRED PATHS node_modules/cmake-fuzz)
@@ -6,6 +6,7 @@ find_package(cmake-fuzz REQUIRED PATHS node_modules/cmake-fuzz)
 project(url C)
 
 fetch_package("github:holepunchto/libutf")
+fetch_package("github:holepunchto/libpunycode")
 
 include(cmake/unicode.cmake)
 
@@ -29,7 +30,6 @@ target_sources(
     include/url/infra.h
     include/url/parse.h
     include/url/percent-encode.h
-    include/url/punycode.h
     include/url/serialize.h
     include/url/type.h
     include/url/unicode.h
@@ -45,6 +45,7 @@ target_include_directories(
     include
     "${CMAKE_CURRENT_BINARY_DIR}/include"
     $<TARGET_PROPERTY:utf,INTERFACE_INCLUDE_DIRECTORIES>
+    $<TARGET_PROPERTY:punycode,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 add_library(url_shared SHARED)
@@ -61,6 +62,7 @@ target_link_libraries(
   PUBLIC
     url
     utf_shared
+    punycode_shared
 )
 
 add_library(url_static STATIC)
@@ -77,6 +79,7 @@ target_link_libraries(
   PUBLIC
     url
     utf_static
+    punycode_static
 )
 
 install(TARGETS url_shared url_static)
