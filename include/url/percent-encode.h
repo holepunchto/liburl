@@ -83,27 +83,39 @@ url__percent_encode_character(utf8_t character, url_character_set_t percent_enco
   return err;
 }
 
+/**
+ * Percent encodes a view, appending the result. `view` must not be a view over
+ * `result`.
+ */
 static inline int
 url__percent_encode_string(const utf8_string_view_t view, url_character_set_t percent_encode_set, utf8_string_t *result) {
   int err;
 
+  size_t n = view.len;
+
+  // Nothing needs encoding until proven otherwise, so room for the view as it
+  // stands is reserved up front and the leading run of code points that are left
+  // alone is copied as it is scanned. Copying the run afterwards instead would
+  // cost a second pass over it, as well as a call out to `memcpy` for what is
+  // usually only a handful of bytes.
+  err = utf8_string_reserve(result, result->len + n);
+  if (err < 0) return err;
+
+  utf8_t *out = &result->data[result->len];
+
   size_t i = 0;
 
-  for (size_t n = view.len; i < n; i++) {
-    if (url__is_in_character_set(percent_encode_set, view.data[i])) {
-      break;
-    }
+  for (; i < n; i++) {
+    utf8_t c = view.data[i];
+
+    if (url__is_in_character_set(percent_encode_set, c)) break;
+
+    out[i] = c;
   }
 
-  if (i == view.len) return utf8_string_append_view(result, view);
+  result->len += i;
 
-  err = utf8_string_reserve(result, result->len + view.len);
-  if (err < 0) return err;
-
-  err = utf8_string_append_view(result, utf8_string_view_substring(view, 0, i));
-  if (err < 0) return err;
-
-  for (size_t n = view.len; i < n; i++) {
+  for (; i < n; i++) {
     err = url__percent_encode_character(view.data[i], percent_encode_set, result);
     if (err < 0) return err;
   }
@@ -116,25 +128,37 @@ url__percent_decode_character(const utf8_t *character, utf8_string_t *result) {
   return utf8_string_append_character(result, url__hex_decoded[character[0]] * 0x10 + url__hex_decoded[character[1]]);
 }
 
+/**
+ * Percent decodes a view, appending the result. `view` must not be a view over
+ * `result`.
+ */
 static inline int
 url__percent_decode_string(const utf8_string_view_t view, utf8_string_t *result) {
   int err;
 
+  size_t n = view.len;
+
+  // Decoding only ever shrinks, so room for the view as it stands is reserved up
+  // front and the leading run of code points that are left alone is copied as it
+  // is scanned, for the same reason as in `url__percent_encode_string`.
+  err = utf8_string_reserve(result, result->len + n);
+  if (err < 0) return err;
+
+  utf8_t *out = &result->data[result->len];
+
   size_t i = 0;
 
-  for (size_t n = view.len; i < n; i++) {
-    if (view.data[i] == 0x25) {
-      break;
-    }
+  for (; i < n; i++) {
+    utf8_t c = view.data[i];
+
+    if (c == 0x25) break;
+
+    out[i] = c;
   }
 
-  err = utf8_string_reserve(result, result->len + view.len);
-  if (err < 0) return err;
+  result->len += i;
 
-  err = utf8_string_append_view(result, utf8_string_view_substring(view, 0, i));
-  if (err < 0) return err;
-
-  for (size_t n = view.len; i < n; i++) {
+  for (; i < n; i++) {
     utf8_t c = view.data[i];
 
     if (

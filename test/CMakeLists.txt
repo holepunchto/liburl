@@ -61,6 +61,8 @@ list(APPEND tests
   parse-http-scheme
   parse-http-scheme-base
   parse-http-scheme-extra-slashes
+  parse-http-scheme-host-hex-prefix
+  parse-http-scheme-host-hex-prefix-uppercase
   parse-http-scheme-host-idna
   parse-http-scheme-host-idna-ascii-preserved
   parse-http-scheme-host-idna-case-folded
@@ -72,11 +74,21 @@ list(APPEND tests
   parse-http-scheme-host-idna-normalized
   parse-http-scheme-host-idna-punycode
   parse-http-scheme-host-ipv4
+  parse-http-scheme-host-ipv4-hex
+  parse-http-scheme-host-ipv4-max
+  parse-http-scheme-host-ipv4-overflow
+  parse-http-scheme-host-ipv4-overflow-wrapping
+  parse-http-scheme-host-ipv4-trailing-dot
+  parse-http-scheme-host-ipv4-trailing-dot-four-parts
   parse-http-scheme-host-ipv6
   parse-http-scheme-host-ipv6-overflow
   parse-http-scheme-host-ipv6-port
   parse-http-scheme-host-mixed-case-path-preserved
+  parse-http-scheme-host-not-a-number
+  parse-http-scheme-host-octal-prefix
   parse-http-scheme-host-uppercase
+  parse-http-scheme-no-slashes
+  parse-http-scheme-one-slash
   parse-http-scheme-password
   parse-http-scheme-password-at-sign
   parse-http-scheme-port
