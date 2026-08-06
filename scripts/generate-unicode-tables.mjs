@@ -10,18 +10,29 @@
 // directory holding the data files, and <header> and <source> are the files to
 // write.
 
+import {
+  CODE_POINTS,
+  blocks,
+  codePoints,
+  entryBlocks,
+  hex,
+  open,
+  pool,
+  range,
+  rangeBlocks,
+  ranges,
+  table
+} from 'cmake-ucd'
 import fs from 'node:fs'
-import path from 'node:path'
 
-const [version, ucd, header, source] = process.argv.slice(2)
+const [version, data, header, source] = process.argv.slice(2)
 
-if (!version || !ucd || !header || !source) {
+if (!version || !data || !header || !source) {
   console.error('Usage: node scripts/generate-unicode-tables.mjs <version> <ucd> <header> <source>')
   process.exit(1)
 }
 
-const MAX_CODE_POINT = 0x10ffff
-const CODE_POINTS = MAX_CODE_POINT + 1
+const { lines, property } = open(data)
 
 // The status values of the IDNA mapping table, as encoded in
 // `url_idna_range_t`. Deviation is folded into valid as the domain parser only
@@ -75,46 +86,6 @@ const JOINING_TYPES = {
   R: 2,
   D: 3,
   T: 4
-}
-
-function read(file) {
-  return fs.readFileSync(path.join(ucd, file), 'utf8')
-}
-
-// Iterates the data lines of a data file, stripping comments and yielding the
-// semicolon separated fields of each line.
-function* lines(file) {
-  for (const line of read(file).split('\n')) {
-    const data = line.split('#')[0].trim()
-
-    if (data === '') continue
-
-    yield data.split(';').map((field) => field.trim())
-  }
-}
-
-// Iterates the `@missing` annotations of a data file, which give the values of
-// the code points that the file leaves unlisted.
-function* missing(file) {
-  for (const line of read(file).split('\n')) {
-    const match = line.match(/^#\s*@missing:\s*([^;]+);\s*(.+?)\s*$/)
-
-    if (match !== null) yield [match[1].trim(), match[2].trim()]
-  }
-}
-
-// Parses a code point or an inclusive range of code points, such as `0041` or
-// `0041..005A`.
-function range(field) {
-  const [start, end = start] = field.split('..')
-
-  return [parseInt(start, 16), parseInt(end, 16)]
-}
-
-function codePoints(field) {
-  if (field === '') return []
-
-  return field.split(' ').map((code) => parseInt(code, 16))
 }
 
 /**
@@ -220,28 +191,6 @@ for (const [codes] of lines('CompositionExclusions.txt')) {
  * https://www.unicode.org/reports/tr44/#Extracted_Properties
  */
 
-function property(file, values, fallback) {
-  const property = new Uint8Array(CODE_POINTS).fill(fallback)
-
-  // The `@missing` annotations are ordered from least to most specific, with
-  // later ones overriding earlier ones.
-  for (const [codes, value] of missing(file)) {
-    if (!(value in values)) continue
-
-    const [start, end] = range(codes)
-
-    property.fill(values[value], start, end + 1)
-  }
-
-  for (const [codes, value] of lines(file)) {
-    const [start, end] = range(codes)
-
-    property.fill(value in values ? values[value] : fallback, start, end + 1)
-  }
-
-  return property
-}
-
 const bidiClasses = property('DerivedBidiClass.txt', BIDI_CLASSES, 0)
 
 const joiningTypes = property('DerivedJoiningType.txt', JOINING_TYPES, 0)
@@ -252,18 +201,10 @@ const marks = property('DerivedGeneralCategory.txt', { Mn: 1, Mc: 1, Me: 1 }, 0)
  * Table construction
  */
 
-// Compresses a per code point property array into a sorted, gap-free list of
-// ranges, each packed as `(start << 8) | value`.
-function ranges(property) {
-  const ranges = []
-
-  for (let c = 0; c < CODE_POINTS; c++) {
-    if (c === 0 || property[c] !== property[c - 1]) {
-      ranges.push(c * 0x100 + property[c])
-    }
-  }
-
-  return ranges
+// A range of a property table is packed as `(start << 8) | value`, the values
+// below all fitting in the byte that leaves.
+function packRange([start, value]) {
+  return hex(start * 0x100 + value)
 }
 
 const propertyRanges = ranges(
@@ -277,68 +218,7 @@ const combiningClassRanges = ranges(combiningClasses)
 // The number of low bits of a code point that a block index leaves to the search
 // it narrows down.
 const BLOCK_SHIFT = 9
-const BLOCKS = (CODE_POINTS >> BLOCK_SHIFT) + 1
-
-// Indexes a sorted, gap-free list of ranges by block, each entry giving the
-// range that covers the first code point of the block. The range covering any
-// code point of a block therefore lies between the entries of that block and the
-// one after it, which is a far narrower search than the whole table.
-function rangeBlocks(starts) {
-  const blocks = []
-
-  for (let b = 0, i = 0; b < BLOCKS; b++) {
-    const start = b << BLOCK_SHIFT
-
-    while (i + 1 < starts.length && starts[i + 1] <= start) i++
-
-    blocks.push(i)
-  }
-
-  return blocks
-}
-
-// Indexes a list of entries sorted by code point, each entry giving the first
-// entry of the block, so that a block holds the entries from its own index up to
-// that of the block after it.
-function entryBlocks(codePoints) {
-  const blocks = []
-
-  for (let b = 0, i = 0; b < BLOCKS; b++) {
-    const start = b << BLOCK_SHIFT
-
-    while (i < codePoints.length && codePoints[i] < start) i++
-
-    blocks.push(i)
-  }
-
-  return blocks
-}
-
-// A pool of code point sequences that entries of the mapping and decomposition
-// tables refer to by offset and length. Identical sequences are shared.
-function pool() {
-  const data = []
-  const offsets = new Map()
-
-  return {
-    data,
-    add(sequence) {
-      const key = sequence.join(' ')
-
-      let offset = offsets.get(key)
-
-      if (offset === undefined) {
-        offset = data.length
-
-        offsets.set(key, offset)
-
-        data.push(...sequence)
-      }
-
-      return offset
-    }
-  }
-}
+const BLOCKS = blocks(BLOCK_SHIFT)
 
 const idnaMappingData = pool()
 const idnaRanges = []
@@ -431,21 +311,33 @@ for (let c = 0, i = 0; c < 0x80; c++) {
   idnaAscii.push(idnaRanges[i][1])
 }
 
-const propertyBlocks = rangeBlocks(propertyRanges.map((range) => range >>> 8))
+const propertyBlocks = rangeBlocks(
+  propertyRanges.map(([start]) => start),
+  BLOCK_SHIFT
+)
 
-const combiningClassBlocks = rangeBlocks(combiningClassRanges.map((range) => range >>> 8))
+const combiningClassBlocks = rangeBlocks(
+  combiningClassRanges.map(([start]) => start),
+  BLOCK_SHIFT
+)
 
-const idnaBlocks = rangeBlocks(idnaRanges.map(([c]) => c))
+const idnaBlocks = rangeBlocks(
+  idnaRanges.map(([c]) => c),
+  BLOCK_SHIFT
+)
 
-const decompositionBlocks = entryBlocks(decompositionEntries.map(([c]) => c))
+const decompositionBlocks = entryBlocks(
+  decompositionEntries.map(([c]) => c),
+  BLOCK_SHIFT
+)
 
-for (const [name, table] of [
+for (const [name, entries] of [
   ['property', propertyRanges],
   ['combining class', combiningClassRanges],
   ['IDNA', idnaRanges],
   ['decomposition', decompositionEntries]
 ]) {
-  if (table.length > 0xffff) {
+  if (entries.length > 0xffff) {
     throw new Error(`The ${name} table is too large to index by block`)
   }
 }
@@ -453,21 +345,6 @@ for (const [name, table] of [
 /**
  * Output
  */
-
-function hex(value) {
-  return `0x${value.toString(16)}`
-}
-
-// Wraps a list of already formatted entries across as many lines as needed.
-function table(entries, perLine) {
-  let out = ''
-
-  for (let i = 0; i < entries.length; i += perLine) {
-    out += `  ${entries.slice(i, i + perLine).join(', ')},\n`
-  }
-
-  return out
-}
 
 const banner = `// This file was generated from the Unicode Character Database ${version} by
 // scripts/generate-unicode-tables.mjs. Do not edit.
@@ -629,13 +506,13 @@ fs.writeFileSync(
 #include <utf.h>
 
 const url_unicode_range_t url__unicode_property_ranges[${propertyRanges.length}] = {
-${table(propertyRanges.map(hex), 8)}};
+${table(propertyRanges.map(packRange), 8)}};
 
 const uint16_t url__unicode_property_blocks[URL_UNICODE_BLOCKS] = {
 ${table(propertyBlocks.map(String), 12)}};
 
 const url_unicode_range_t url__unicode_combining_class_ranges[${combiningClassRanges.length}] = {
-${table(combiningClassRanges.map(hex), 8)}};
+${table(combiningClassRanges.map(packRange), 8)}};
 
 const uint16_t url__unicode_combining_class_blocks[URL_UNICODE_BLOCKS] = {
 ${table(combiningClassBlocks.map(String), 12)}};

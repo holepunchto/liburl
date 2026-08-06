@@ -134,7 +134,7 @@ target_link_libraries(
 
 add_test(
   NAME idna-conformance
-  COMMAND idna-conformance "${url_unicode_data}/IdnaTestV2.txt"
+  COMMAND idna-conformance "${ucd_data}/IdnaTestV2.txt"
   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
 )
 

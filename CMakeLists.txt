@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 4.0)
 
 find_package(cmake-fetch REQUIRED PATHS node_modules/cmake-fetch)
 find_package(cmake-fuzz REQUIRED PATHS node_modules/cmake-fuzz)
+find_package(cmake-ucd REQUIRED PATHS node_modules/cmake-ucd)
 
 project(url C)
 
