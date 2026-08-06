@@ -124,24 +124,4 @@ foreach(test IN LISTS tests)
   )
 endforeach()
 
-add_executable(idna-conformance idna-conformance.c)
-
-target_link_libraries(
-  idna-conformance
-  PRIVATE
-    url_static
-)
-
-add_test(
-  NAME idna-conformance
-  COMMAND idna-conformance "${ucd_data}/IdnaTestV2.txt"
-  WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-)
-
-set_tests_properties(
-  idna-conformance
-  PROPERTIES
-  TIMEOUT 60
-)
-
 add_subdirectory(fuzz)

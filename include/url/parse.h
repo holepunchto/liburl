@@ -2,6 +2,7 @@
 #define URL_PARSE_H
 
 #include <assert.h>
+#include <idna.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -11,7 +12,6 @@
 
 #include "../url.h"
 #include "character-set.h"
-#include "idna.h"
 #include "infra.h"
 #include "percent-encode.h"
 #include "serialize.h"
@@ -614,7 +614,7 @@ url__parse_domain (const utf8_string_view_t input, utf8_string_t *result) {
   // all decode successfully and still fail the validity criteria, as is the case
   // for xn--8i7caa, which decodes to the mapped code points of "ｗｗｗ".
   if (accumulator & 0x80) {
-    err = url__idna_to_ascii(utf8_string_view(&domain), &converted);
+    err = idna_url_to_ascii(utf8_string_view(&domain), &converted);
     if (err < 0) goto err;
 
     err = utf8_string_append(result, &converted);

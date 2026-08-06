@@ -1,5 +1,4 @@
 list(APPEND fuzzers
-  idna
   parse/absolute
   parse/relative
 )
