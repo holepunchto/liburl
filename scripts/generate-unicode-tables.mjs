@@ -11,10 +11,9 @@
 // write.
 
 import {
-  CODE_POINTS,
+  constants,
   blocks,
   codePoints,
-  entryBlocks,
   hex,
   open,
   pool,
@@ -24,6 +23,8 @@ import {
   table
 } from 'cmake-ucd'
 import fs from 'node:fs'
+
+const { CODE_POINTS } = constants
 
 const [version, data, header, source] = process.argv.slice(2)
 
@@ -130,62 +131,6 @@ for (const [codes, status, mapping] of lines('IdnaMappingTable.txt')) {
 }
 
 /**
- * UnicodeData.txt
- *
- * https://www.unicode.org/reports/tr44/#UnicodeData.txt
- */
-
-const combiningClasses = new Uint8Array(CODE_POINTS)
-const decompositions = new Map()
-
-{
-  let first = null
-
-  for (const fields of lines('UnicodeData.txt')) {
-    const c = parseInt(fields[0], 16)
-    const name = fields[1]
-    const combiningClass = parseInt(fields[3], 10)
-    const decomposition = fields[5]
-
-    // Large blocks of code points sharing the same properties are given as a
-    // pair of `First` and `Last` lines rather than one line per code point.
-    if (name.endsWith(', First>')) {
-      first = c
-      continue
-    }
-
-    let start = c
-
-    if (name.endsWith(', Last>')) {
-      start = first
-      first = null
-    }
-
-    for (let i = start; i <= c; i++) combiningClasses[i] = combiningClass
-
-    // Only canonical decompositions take part in normalization; compatibility
-    // decompositions are tagged with a bracketed formatting tag.
-    if (decomposition !== '' && !decomposition.startsWith('<')) {
-      decompositions.set(c, codePoints(decomposition))
-    }
-  }
-}
-
-/**
- * CompositionExclusions.txt
- *
- * https://www.unicode.org/reports/tr44/#CompositionExclusions.txt
- */
-
-const exclusions = new Set()
-
-for (const [codes] of lines('CompositionExclusions.txt')) {
-  const [start, end] = range(codes)
-
-  for (let c = start; c <= end; c++) exclusions.add(c)
-}
-
-/**
  * DerivedBidiClass.txt, DerivedJoiningType.txt, DerivedGeneralCategory.txt
  *
  * https://www.unicode.org/reports/tr44/#Extracted_Properties
@@ -212,8 +157,6 @@ const propertyRanges = ranges(
     return bidiClasses[c] | (joiningTypes[c] << 4) | (marks[c] << 7)
   })
 )
-
-const combiningClassRanges = ranges(combiningClasses)
 
 // The number of low bits of a code point that a block index leaves to the search
 // it narrows down.
@@ -253,54 +196,6 @@ for (let c = 0; c < CODE_POINTS; c++) {
   idnaRanges.push([c, value])
 }
 
-const decompositionData = pool()
-const decompositionEntries = []
-
-// Decompositions are recursive, so are expanded up front to leave the runtime
-// with a single lookup per code point.
-function decompose(c) {
-  const decomposition = decompositions.get(c)
-
-  if (decomposition === undefined) return [c]
-
-  return decomposition.flatMap(decompose)
-}
-
-for (const c of [...decompositions.keys()].sort((a, b) => a - b)) {
-  const decomposition = decompose(c)
-
-  if (decomposition.length >= 0x100) {
-    throw new Error(`Decomposition of ${c.toString(16)} is too long`)
-  }
-
-  const offset = decompositionData.add(decomposition)
-
-  decompositionEntries.push([c, decomposition.length * 0x1000000 + offset])
-}
-
-// The pairs of code points that compose into a primary composite. Singleton
-// decompositions, decompositions that begin with a non-starter, and the code
-// points listed in CompositionExclusions.txt are all excluded.
-const compositions = []
-
-for (const [c, decomposition] of decompositions) {
-  if (decomposition.length !== 2) continue
-  if (combiningClasses[decomposition[0]] !== 0) continue
-  if (exclusions.has(c)) continue
-
-  compositions.push([decomposition[0], decomposition[1], c])
-}
-
-compositions.sort((a, b) => a[0] - b[0] || a[1] - b[1])
-
-if (decompositionData.data.length >= 0x1000000) {
-  throw new Error('Decomposition data is too large')
-}
-
-if (idnaMappingData.data.length >= 0x2000000) {
-  throw new Error('Mapping data is too large')
-}
-
 // Every domain is made up largely of ASCII code points, which are worth looking
 // up by code point rather than by searching for the range that holds them.
 const idnaAscii = []
@@ -316,26 +211,14 @@ const propertyBlocks = rangeBlocks(
   BLOCK_SHIFT
 )
 
-const combiningClassBlocks = rangeBlocks(
-  combiningClassRanges.map(([start]) => start),
-  BLOCK_SHIFT
-)
-
 const idnaBlocks = rangeBlocks(
   idnaRanges.map(([c]) => c),
   BLOCK_SHIFT
 )
 
-const decompositionBlocks = entryBlocks(
-  decompositionEntries.map(([c]) => c),
-  BLOCK_SHIFT
-)
-
 for (const [name, entries] of [
   ['property', propertyRanges],
-  ['combining class', combiningClassRanges],
-  ['IDNA', idnaRanges],
-  ['decomposition', decompositionEntries]
+  ['IDNA', idnaRanges]
 ]) {
   if (entries.length > 0xffff) {
     throw new Error(`The ${name} table is too large to index by block`)
@@ -423,41 +306,6 @@ extern const url_unicode_range_t url__unicode_property_ranges[${propertyRanges.l
 extern const uint16_t url__unicode_property_blocks[URL_UNICODE_BLOCKS];
 
 /**
- * The Canonical_Combining_Class property of a code point.
- */
-extern const url_unicode_range_t url__unicode_combining_class_ranges[${combiningClassRanges.length}];
-
-extern const uint16_t url__unicode_combining_class_blocks[URL_UNICODE_BLOCKS];
-
-/**
- * The full canonical decomposition of a code point, given as a length and an
- * offset into \`url__unicode_decomposition_data\` packed as
- * \`(length << 24) | offset\`. Entries are sorted by code point.
- */
-typedef struct {
-  utf32_t code_point;
-  uint32_t decomposition;
-} url__unicode_decomposition_t;
-
-extern const url__unicode_decomposition_t url__unicode_decompositions[${decompositionEntries.length}];
-
-extern const uint16_t url__unicode_decomposition_blocks[URL_UNICODE_BLOCKS];
-
-extern const utf32_t url__unicode_decomposition_data[${decompositionData.data.length}];
-
-/**
- * A pair of code points and the primary composite they compose into. Entries
- * are sorted by first and then second code point.
- */
-typedef struct {
-  utf32_t first;
-  utf32_t second;
-  utf32_t composite;
-} url__unicode_composition_t;
-
-extern const url__unicode_composition_t url__unicode_compositions[${compositions.length}];
-
-/**
  * The status values of the IDNA mapping table. Deviation is folded into valid
  * as the domain parser only ever performs nontransitional processing, which
  * leaves deviation code points unchanged and accepts them as valid.
@@ -510,30 +358,6 @@ ${table(propertyRanges.map(packRange), 8)}};
 
 const uint16_t url__unicode_property_blocks[URL_UNICODE_BLOCKS] = {
 ${table(propertyBlocks.map(String), 12)}};
-
-const url_unicode_range_t url__unicode_combining_class_ranges[${combiningClassRanges.length}] = {
-${table(combiningClassRanges.map(packRange), 8)}};
-
-const uint16_t url__unicode_combining_class_blocks[URL_UNICODE_BLOCKS] = {
-${table(combiningClassBlocks.map(String), 12)}};
-
-const url__unicode_decomposition_t url__unicode_decompositions[${decompositionEntries.length}] = {
-${table(
-  decompositionEntries.map(([c, d]) => `{${hex(c)}, ${hex(d)}}`),
-  4
-)}};
-
-const uint16_t url__unicode_decomposition_blocks[URL_UNICODE_BLOCKS] = {
-${table(decompositionBlocks.map(String), 12)}};
-
-const utf32_t url__unicode_decomposition_data[${decompositionData.data.length}] = {
-${table(decompositionData.data.map(hex), 8)}};
-
-const url__unicode_composition_t url__unicode_compositions[${compositions.length}] = {
-${table(
-  compositions.map(([a, b, c]) => `{${hex(a)}, ${hex(b)}, ${hex(c)}}`),
-  4
-)}};
 
 const url_idna_range_t url__idna_ranges[${idnaRanges.length}] = {
 ${table(

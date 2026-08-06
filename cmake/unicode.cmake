@@ -12,13 +12,6 @@ set(url_unicode_tables_header "${CMAKE_CURRENT_BINARY_DIR}/include/url/unicode-t
 set(url_unicode_tables_source "${CMAKE_CURRENT_BINARY_DIR}/url/unicode-tables.c")
 
 ucd_fetch(
-  UCD
-    UnicodeData.txt
-    CompositionExclusions.txt
-  PATHS url_unicode_sources
-)
-
-ucd_fetch(
   EXTRACTED
     DerivedBidiClass.txt
     DerivedGeneralCategory.txt

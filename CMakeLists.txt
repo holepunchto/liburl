@@ -8,6 +8,7 @@ project(url C)
 
 fetch_package("github:holepunchto/libutf")
 fetch_package("github:holepunchto/libpunycode")
+fetch_package("github:holepunchto/libnormalize")
 
 include(cmake/unicode.cmake)
 
@@ -47,6 +48,7 @@ target_include_directories(
     "${CMAKE_CURRENT_BINARY_DIR}/include"
     $<TARGET_PROPERTY:utf,INTERFACE_INCLUDE_DIRECTORIES>
     $<TARGET_PROPERTY:punycode,INTERFACE_INCLUDE_DIRECTORIES>
+    $<TARGET_PROPERTY:normalize,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 add_library(url_shared SHARED)
@@ -64,6 +66,7 @@ target_link_libraries(
     url
     utf_shared
     punycode_shared
+    normalize_shared
 )
 
 add_library(url_static STATIC)
@@ -81,6 +84,7 @@ target_link_libraries(
     url
     utf_static
     punycode_static
+    normalize_static
 )
 
 install(TARGETS url_shared url_static)

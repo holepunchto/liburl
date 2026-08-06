@@ -34,6 +34,37 @@ url__idna_has_ace_prefix (const utf32_t *label, size_t len) {
 }
 
 /**
+ * Checks whether a code point is a virama, being one of the combining marks that
+ * either joiner may follow.
+ *
+ * https://www.rfc-editor.org/rfc/rfc5892#appendix-A.1
+ */
+static inline bool
+url__idna_is_virama (utf32_t c) {
+  return normalize_combining_class(c) == 9;
+}
+
+/**
+ * Appends the full canonical decomposition of `c` to `result`.
+ *
+ * The decomposer is given the most that a single code point can decompose to, and
+ * writes into the tail of `result` directly. Taking it by way of a buffer of that
+ * size instead would grow `result` by only what the decomposition turned out to
+ * need, but costs a copy of it for every code point.
+ */
+static inline int
+url__idna_decompose (utf32_t c, utf32_string_t *result) {
+  int err;
+
+  err = utf32_string_reserve(result, result->len + NORMALIZE_MAX_DECOMPOSITION);
+  if (err < 0) return err;
+
+  result->len += normalize_decompose(c, &result->data[result->len]);
+
+  return 0;
+}
+
+/**
  * Checks a label against the ContextJ rules, which restrict the contexts in
  * which the zero width non-joiner and joiner may appear.
  *
@@ -47,7 +78,7 @@ url__idna_check_joiners (const utf32_t *label, size_t len) {
 
     // Either joiner may follow a virama, where it controls whether the two
     // characters it sits between take a conjunct form.
-    if (i > 0 && url__unicode_is_virama(label[i - 1])) continue;
+    if (i > 0 && url__idna_is_virama(label[i - 1])) continue;
 
     // The zero width joiner has no other context in which it is allowed.
     if (label[i] == 0x200d) return false;
@@ -295,7 +326,7 @@ url__idna_to_ascii (utf8_string_view_t input, utf8_string_t *result) {
     switch (url__idna_status(decoded.data[i], &mapping, &mapping_len)) {
     case url__idna_status_mapped:
       for (size_t j = 0; j < mapping_len; j++) {
-        err = url__unicode_decompose(mapping[j], &normalized);
+        err = url__idna_decompose(mapping[j], &normalized);
         if (err < 0) goto err;
       }
       break;
@@ -308,13 +339,13 @@ url__idna_to_ascii (utf8_string_view_t input, utf8_string_t *result) {
     case url__idna_status_valid:
     case url__idna_status_disallowed:
     default:
-      err = url__unicode_decompose(decoded.data[i], &normalized);
+      err = url__idna_decompose(decoded.data[i], &normalized);
       if (err < 0) goto err;
       break;
     }
   }
 
-  normalized.len = url__unicode_recompose(normalized.data, normalized.len);
+  normalized.len = normalize_recompose(normalized.data, normalized.len);
 
   // 3. Break the domain into labels at U+002E ( . ) FULL STOP, 4. convert every
   //    label that is Punycode encoded back to Unicode, and verify that the label
@@ -382,8 +413,14 @@ url__idna_to_ascii (utf8_string_view_t input, utf8_string_t *result) {
       // The first of the validity criteria: the label must be in Normalization
       // Form C. Normalizing it is at the same time how it joins the converted
       // domain, the two being one and the same if it was already normalized.
-      err = url__unicode_normalize(label.data, label.len, &converted);
+      size_t bound = normalize_max_length(label.len);
+
+      if (bound == (size_t) -1 || bound > SIZE_MAX - converted.len) goto err;
+
+      err = utf32_string_reserve(&converted, converted.len + bound);
       if (err < 0) goto err;
+
+      converted.len += normalize_nfc(label.data, label.len, &converted.data[converted.len]);
 
       if (converted.len - offset != label.len) goto err;
       if (memcmp(&converted.data[offset], label.data, label.len * sizeof(utf32_t)) != 0) goto err;
