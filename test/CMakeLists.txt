@@ -1,6 +1,7 @@
 list(APPEND tests
   parse-non-special-scheme-double-slash-path-idempotence
   parse-non-special-scheme-trailing-dot-segment-idempotence
+  parse-custom-scheme-empty-credentials
   parse-custom-scheme-fragment
   parse-custom-scheme-host-uppercase-preserved
   parse-custom-scheme-query
@@ -10,6 +11,7 @@ list(APPEND tests
   parse-custom-scheme-relative-absolute-path-host
   parse-custom-scheme-relative-absolute-path-host-empty-path
   parse-custom-scheme-relative-absolute-path-host-no-path
+  parse-custom-scheme-relative-authority
   parse-custom-scheme-relative-bare-path
   parse-custom-scheme-relative-bare-path-username
   parse-custom-scheme-relative-double-dot-host
@@ -60,6 +62,11 @@ list(APPEND tests
   parse-file-scheme-root-path
   parse-http-scheme
   parse-http-scheme-base
+  parse-http-scheme-empty-credentials
+  parse-http-scheme-empty-credentials-port
+  parse-http-scheme-empty-password
+  parse-http-scheme-empty-userinfo
+  parse-http-scheme-empty-username
   parse-http-scheme-extra-slashes
   parse-http-scheme-host-hex-prefix
   parse-http-scheme-host-hex-prefix-uppercase
@@ -86,11 +93,14 @@ list(APPEND tests
   parse-http-scheme-host-mixed-case-path-preserved
   parse-http-scheme-host-not-a-number
   parse-http-scheme-host-octal-prefix
+  parse-http-scheme-host-percent-encoded
+  parse-http-scheme-host-percent-encoded-non-hex
   parse-http-scheme-host-uppercase
   parse-http-scheme-no-slashes
   parse-http-scheme-one-slash
   parse-http-scheme-password
   parse-http-scheme-password-at-sign
+  parse-http-scheme-password-colon
   parse-http-scheme-port
   parse-http-scheme-port-default
   parse-http-scheme-port-leading-zeros
@@ -101,6 +111,7 @@ list(APPEND tests
   parse-http-scheme-query-percent-encode
   parse-http-scheme-relative-absolute-path
   parse-http-scheme-relative-bare-path
+  parse-http-scheme-relative-empty-username
   parse-http-scheme-relative-path
   parse-http-scheme-relative-path-with-scheme
   parse-http-scheme-relative-percent-encoded-forbidden-host

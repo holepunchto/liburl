@@ -1050,14 +1050,16 @@ url__parse(url_t *url, const utf8_string_view_t input, const url_t *base) {
           if (err < 0) goto err;
 
           utf8_string_view_t username = url_get_username(base);
+          utf8_string_view_t password = url_get_password(base);
 
-          if (!utf8_string_view_empty(username)) {
+          // The userinfo of the base is carried over only when the base includes
+          // credentials, that is when either its username or its password is not
+          // empty. Either one of the two may be empty on its own.
+          if (!utf8_string_view_empty(username) || !utf8_string_view_empty(password)) {
             err = utf8_string_append_view(&url->href, username);
             if (err < 0) goto err;
 
             url->components.username_end = url->href.len;
-
-            utf8_string_view_t password = url_get_password(base);
 
             if (!utf8_string_view_empty(password)) {
               err = utf8_string_append_character(&url->href, ':');
@@ -1146,6 +1148,14 @@ url__parse(url_t *url, const utf8_string_view_t input, const url_t *base) {
       if (url__is_special(url) && (c == 0x2f || c == 0x5c)) {
         state = url_state_special_authority_ignore_slashes;
       } else if (c == 0x2f) {
+        // Only a non-special URL reaches here, and the relative state leaves the
+        // two slashes that precede an authority to whichever state turns out to
+        // need them, so they are appended now that one does.
+        err = utf8_string_append_literal(&url->href, (utf8_t *) "//", 2);
+        if (err < 0) goto err;
+
+        url->components.username_end = url->href.len;
+
         state = url_state_authority;
       } else {
         utf8_string_view_t host = url_get_host(base);
@@ -1157,14 +1167,16 @@ url__parse(url_t *url, const utf8_string_view_t input, const url_t *base) {
           }
 
           utf8_string_view_t username = url_get_username(base);
+          utf8_string_view_t password = url_get_password(base);
 
-          if (!utf8_string_view_empty(username)) {
+          // The userinfo of the base is carried over only when the base includes
+          // credentials, that is when either its username or its password is not
+          // empty. Either one of the two may be empty on its own.
+          if (!utf8_string_view_empty(username) || !utf8_string_view_empty(password)) {
             err = utf8_string_append_view(&url->href, username);
             if (err < 0) goto err;
 
             url->components.username_end = url->href.len;
-
-            utf8_string_view_t password = url_get_password(base);
 
             if (!utf8_string_view_empty(password)) {
               err = utf8_string_append_character(&url->href, ':');
@@ -1297,6 +1309,8 @@ url__parse(url_t *url, const utf8_string_view_t input, const url_t *base) {
       if (host_end == (size_t) -1) host_end = authority_end;
 
       if (at_sign != (size_t) -1) {
+        size_t userinfo_start = url->href.len;
+
         bool password_token_seen = false;
 
         // A commercial at within the userinfo is in the userinfo percent encode
@@ -1326,8 +1340,20 @@ url__parse(url_t *url, const utf8_string_view_t input, const url_t *base) {
         // The host must not be empty if a userinfo precedes it.
         if (at_sign + 1 == authority_end) goto err;
 
-        err = utf8_string_append_character(&url->href, '@');
-        if (err < 0) goto err;
+        // A password that is empty is left out along with the colon that would
+        // separate it from the username.
+        if (password_token_seen && url->href.len == url->components.username_end + 1 /* : */) {
+          url->href.len = url->components.username_end;
+        }
+
+        // A URL serializes with a userinfo only when it includes credentials, that
+        // is when either its username or its password is not empty. One that is
+        // empty throughout is left out along with the commercial at that would
+        // follow it, which leaves `username_end` where the host now begins.
+        if (url->href.len != userinfo_start) {
+          err = utf8_string_append_character(&url->href, '@');
+          if (err < 0) goto err;
+        }
 
         pointer = at_sign;
       } else {
