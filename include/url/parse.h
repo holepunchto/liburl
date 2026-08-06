@@ -173,6 +173,76 @@ static url_character_set_t url__special_delimiter_character_set = {
   0x00 | 0x00 | 0x00 | 0x00 | 0x10,
 };
 
+/**
+ * The code points that the authority of a URL is scanned for, being the ones that
+ * delimit it as well as the commercial at that ends its userinfo, the colon that
+ * separates its host from its port, and the brackets that an IPv6 address is
+ * enclosed in.
+ *
+ * https://url.spec.whatwg.org/#authority-state
+ * https://url.spec.whatwg.org/#host-state
+ */
+static url_character_set_t url__authority_landmark_character_set = {
+  // 00    01     02     03     04     05     06     07
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 08    09     0a     0b     0c     0d     0e     0f
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 10    11     12     13     14     15     16     17
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 18    19     1a     1b     1c     1d     1e     1f
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 20    21     22     23     24     25     26     27
+  0x00 | 0x00 | 0x00 | 0x08 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 28    29     2a     2b     2c     2d     2e     2f
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x80,
+  // 30    31     32     33     34     35     36     37
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 38    39     3a     3b     3c     3d     3e     3f
+  0x00 | 0x00 | 0x04 | 0x00 | 0x00 | 0x00 | 0x00 | 0x80,
+  // 40    41     42     43     44     45     46     47
+  0x01 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 48    49     4a     4b     4c     4d     4e     4f
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 50    51     52     53     54     55     56     57
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 58    59     5a     5b     5c     5d
+  0x00 | 0x00 | 0x00 | 0x08 | 0x00 | 0x20,
+};
+
+/**
+ * The code points that the authority of a special URL is scanned for, a backslash
+ * standing in for a slash in one.
+ *
+ * https://url.spec.whatwg.org/#authority-state
+ * https://url.spec.whatwg.org/#host-state
+ */
+static url_character_set_t url__special_authority_landmark_character_set = {
+  // 00    01     02     03     04     05     06     07
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 08    09     0a     0b     0c     0d     0e     0f
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 10    11     12     13     14     15     16     17
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 18    19     1a     1b     1c     1d     1e     1f
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 20    21     22     23     24     25     26     27
+  0x00 | 0x00 | 0x00 | 0x08 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 28    29     2a     2b     2c     2d     2e     2f
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x80,
+  // 30    31     32     33     34     35     36     37
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 38    39     3a     3b     3c     3d     3e     3f
+  0x00 | 0x00 | 0x04 | 0x00 | 0x00 | 0x00 | 0x00 | 0x80,
+  // 40    41     42     43     44     45     46     47
+  0x01 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 48    49     4a     4b     4c     4d     4e     4f
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 50    51     52     53     54     55     56     57
+  0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 58    59     5a     5b     5c     5d
+  0x00 | 0x00 | 0x00 | 0x08 | 0x10 | 0x20,
+};
+
 static url_character_set_t url__scheme_character_set = {
   // 00    01     02     03     04     05     06     07
   0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
@@ -301,6 +371,17 @@ url__is_double_dot_path_segment(const utf8_string_view_t path) {
 // https://url.spec.whatwg.org/#ends-in-a-number-checker
 static inline bool
 url__ends_in_a_number(const utf8_string_view_t input) {
+  // Optimization: The last part of the domain is a number in base eight, ten, or
+  // sixteen, and so ends in a hexadecimal digit, unless it is a bare "0x", which
+  // the IPv4 number parser reads as zero and which ends in an x. A domain that
+  // ends in a full stop is left to the check below, which takes the part before
+  // that stop rather than the empty one after it.
+  utf8_t last_character = url__to_ascii_lowercase(input.data[input.len - 1]);
+
+  if (last_character != '.' && last_character != 'x' && !url__is_ascii_hex_digit(last_character)) {
+    return false;
+  }
+
   size_t i = utf8_string_view_last_index_of_character(input, input.len - 1, '.');
 
   utf8_string_view_t last = utf8_string_view_substring(input, i + 1, input.len);
@@ -340,16 +421,16 @@ url__parse_ipv4_number(utf8_string_view_t input) {
   if (input.len > 1 && input.data[0] == 0x30 && url__to_ascii_lowercase(input.data[1]) == 0x78) {
     input = utf8_string_view_substring(input, 2, input.len);
 
-    if (utf8_string_view_empty(input)) goto err;
-
     r = 16;
   } else if (input.len > 1 && input.data[0] == 0x30) {
     input = utf8_string_view_substring(input, 1, input.len);
 
-    if (utf8_string_view_empty(input)) goto err;
-
     r = 8;
   }
+
+  // A prefix with no digits behind it is zero rather than a failure, so that a
+  // domain of "0x" is the address 0.0.0.0 rather than a domain.
+  if (utf8_string_view_empty(input)) return 0;
 
   uint64_t result = 0;
 
@@ -371,6 +452,11 @@ url__parse_ipv4_number(utf8_string_view_t input) {
     }
 
     result = result * r + value;
+
+    // Every number above the largest address fails whichever bound the IPv4
+    // parser holds it to, so one that runs past that is capped rather than left
+    // to wrap around.
+    if (result > UINT32_MAX) result = (uint64_t) UINT32_MAX + 1;
   }
 
   return result;
@@ -385,6 +471,15 @@ url__parse_ipv4(utf8_string_view_t input, uint32_t *result) {
   uint32_t address = 0;
 
   uint8_t parts = 0;
+
+  // A trailing full stop leaves an empty last part, which is dropped so that the
+  // part before it is the one that takes the bits left over. It is only dropped
+  // when there is a part ahead of it, and a domain that would leave two of them
+  // behind never reaches here, the ends in a number checker having already found
+  // it to be no number at all.
+  if (input.len > 1 && input.data[input.len - 1] == '.') {
+    input = utf8_string_view_substring(input, 0, input.len - 1);
+  }
 
   while (!utf8_string_view_empty(input)) {
     size_t i = utf8_string_view_index_of_character(input, 0, '.');
@@ -654,37 +749,54 @@ url__parse_host(const utf8_string_view_t input, bool is_opaque, utf8_string_t *r
   // Optimization: A domain that is neither percent encoded nor non-ASCII, being
   // the common case, needs no more than lowercasing, and so is written straight
   // to the result rather than by way of a copy. `input` must for that reason not
-  // be a view over `result`.
+  // be a view over `result`. The copy, the lowercasing, and the search for a
+  // forbidden code point all happen in the same pass.
   size_t start = result->len;
 
-  err = utf8_string_append_view(result, input);
+  err = utf8_string_reserve(result, start + input.len);
   if (err < 0) return err;
 
-  utf8_t accumulator = 0;
+  utf8_t *out = &result->data[start];
 
-  for (size_t i = start, n = result->len; i < n; i++) {
-    utf8_t c = result->data[i];
+  utf8_t accumulator = 0;
+  uint8_t forbidden = 0;
+
+  for (size_t i = 0, n = input.len; i < n; i++) {
+    utf8_t c = input.data[i];
 
     // A percent sign is folded into the accumulator as though it were non-ASCII
     // so that the single test below catches both a domain that has to be decoded
     // and one that has to be converted.
     accumulator |= c | (utf8_t) ((c == 0x25) << 7);
 
-    result->data[i] = url__to_ascii_lowercase(c);
+    // No forbidden domain code point is an uppercase ASCII letter, so the domain
+    // may be searched for one before it is lowercased.
+    forbidden |= url__is_in_character_set(url__forbidden_domain_character_set, c);
+
+    out[i] = url__to_ascii_lowercase(c);
   }
+
+  result->len = start + input.len;
 
   if (accumulator & 0x80) {
     result->len = start;
 
     err = url__parse_domain(input, result);
     if (err < 0) return err;
+
+    // The conversion may have brought forbidden code points of its own, and so
+    // its output is searched in place of the input that the pass above saw.
+    forbidden = url__contains_from_character_set(
+      url__forbidden_domain_character_set,
+      utf8_string_substring(result, start, result->len)
+    );
   }
 
   utf8_string_view_t domain = utf8_string_substring(result, start, result->len);
 
   if (domain.len == 0) return -1;
 
-  if (url__contains_from_character_set(url__forbidden_domain_character_set, domain)) return -1;
+  if (forbidden) return -1;
 
   if (url__ends_in_a_number(domain)) {
     uint32_t address;
@@ -709,12 +821,16 @@ url__parse(url_t *url, const utf8_string_view_t input, const url_t *base) {
 
   url_state_t state = url_state_scheme_start;
 
-  err = utf8_string_reserve(&url->href, input.len);
+  // A URL resolved against a base draws on the serialization of that base as much
+  // as on the input, so both are reserved up front rather than letting the appends
+  // below grow the href a power of two at a time.
+  err = utf8_string_reserve(&url->href, base == NULL ? input.len : input.len + base->href.len);
   if (err < 0) goto err;
 
-  // The end of the authority, as found by the authority state for the host state
-  // that always follows it.
+  // The end of the authority, and that of the host within it, as found by the
+  // authority state for the host state that always follows it.
   size_t authority_end = 0;
+  size_t host_end = 0;
 
   for (size_t pointer = 0, n = input.len; pointer <= n; pointer++) {
     int16_t c = pointer < n ? input.data[pointer] : -1;
@@ -1100,26 +1216,25 @@ url__parse(url_t *url, const utf8_string_view_t input, const url_t *base) {
 
     // https://url.spec.whatwg.org/#special-authority-slashes-state
     case url_state_special_authority_slashes:
-      state = url_state_special_authority_ignore_slashes;
+      // A special URL always has an authority, and so always serializes with the
+      // two slashes that precede it, however many the input happens to have.
+      err = utf8_string_append_literal(&url->href, (utf8_t *) "//", 2);
+      if (err < 0) goto err;
 
-      if (c == 0x2f && pointer + 1 < input.len && input.data[pointer + 1] == 0x2f) {
-        err = utf8_string_append_literal(&url->href, (utf8_t *) "//", 2);
-        if (err < 0) goto err;
+      url->components.username_end = url->href.len;
 
-        url->components.username_end = url->href.len;
-
-        pointer++;
-      } else {
-        pointer--;
-      }
-      break;
+      // Fall through to skip whatever slashes the input does have.
 
     // https://url.spec.whatwg.org/#special-authority-ignore-slashes-state
     case url_state_special_authority_ignore_slashes:
-      if (c != 0x2f && c != 0x5c) {
-        state = url_state_authority;
-        pointer--;
+      // Optimization: The whole run of slashes is skipped in one go, rather than
+      // one state transition per slash.
+      while (pointer < n && (input.data[pointer] == 0x2f || input.data[pointer] == 0x5c)) {
+        pointer++;
       }
+
+      state = url_state_authority;
+      pointer--;
       break;
 
     // https://url.spec.whatwg.org/#authority-state
@@ -1129,23 +1244,57 @@ url__parse(url_t *url, const utf8_string_view_t input, const url_t *base) {
       // its end up front lets the userinfo and the host each be handled in one
       // go, rather than buffering the authority a byte at a time only to scan the
       // host a second time in the host state.
-      url_character_set_t *delimiters = url__is_special(url)
+      //
+      // The same pass finds the last commercial at, which is where the userinfo
+      // ends and the host begins, as well as the colon that separates the host
+      // from the port, so that the host state has to scan nothing of its own.
+      bool special = url__is_special(url);
+
+      url_character_set_t *delimiters = special
                                           ? &url__special_delimiter_character_set
                                           : &url__delimiter_character_set;
 
-      authority_end = pointer;
-
-      while (authority_end < n && !url__is_in_character_set(*delimiters, input.data[authority_end])) {
-        authority_end++;
-      }
+      url_character_set_t *landmarks = special
+                                         ? &url__special_authority_landmark_character_set
+                                         : &url__authority_landmark_character_set;
 
       // The userinfo is everything up to the last commercial at, the host making
       // up the remainder of the authority.
       size_t at_sign = (size_t) -1;
 
-      for (size_t i = pointer; i < authority_end; i++) {
-        if (input.data[i] == 0x40) at_sign = i;
+      bool inside_brackets = false;
+
+      host_end = (size_t) -1;
+
+      authority_end = pointer;
+
+      while (authority_end < n) {
+        utf8_t landmark = input.data[authority_end];
+
+        if (url__is_in_character_set(*landmarks, landmark)) {
+          if (url__is_in_character_set(*delimiters, landmark)) break;
+
+          if (landmark == 0x40) {
+            // Everything up to here turns out to be userinfo, so the host, and
+            // any port it was thought to have, start over after it.
+            at_sign = authority_end;
+            host_end = (size_t) -1;
+            inside_brackets = false;
+          } else if (landmark == 0x5b) {
+            inside_brackets = true;
+          } else if (landmark == 0x5d) {
+            inside_brackets = false;
+          } else if (host_end == (size_t) -1 && !inside_brackets) {
+            // A colon within brackets belongs to an IPv6 address rather than
+            // separating a port.
+            host_end = authority_end;
+          }
+        }
+
+        authority_end++;
       }
+
+      if (host_end == (size_t) -1) host_end = authority_end;
 
       if (at_sign != (size_t) -1) {
         bool password_token_seen = false;
@@ -1193,23 +1342,8 @@ url__parse(url_t *url, const utf8_string_view_t input, const url_t *base) {
     case url_state_host:
     // https://url.spec.whatwg.org/#hostname-state
     case url_state_hostname: {
-      // The host runs to the port separator, if there is one, and otherwise to
-      // the end of the authority that the authority state found. A colon within
-      // brackets belongs to an IPv6 address rather than separating a port.
-      size_t host_end = pointer;
-
-      bool inside_brackets = false;
-
-      while (host_end < authority_end) {
-        utf8_t c = input.data[host_end];
-
-        if (c == 0x5b) inside_brackets = true;
-        else if (c == 0x5d) inside_brackets = false;
-        else if (c == 0x3a && !inside_brackets) break;
-
-        host_end++;
-      }
-
+      // The host runs to the port separator that the authority state found, if
+      // there is one, and otherwise to the end of the authority.
       bool port_seen = host_end != authority_end;
 
       // An empty host is only allowed in a URL that is neither special nor has a
@@ -1462,7 +1596,7 @@ url__parse(url_t *url, const utf8_string_view_t input, const url_t *base) {
 
       int16_t delimiter = end < n ? input.data[end] : -1;
 
-      // The offset of the segment itself, the solidus that precedes it sitting
+      // The offset of the segment itself, the slash that precedes it sitting
       // one before.
       size_t segment_start = url->href.len + 1;
 
@@ -1475,7 +1609,7 @@ url__parse(url_t *url, const utf8_string_view_t input, const url_t *base) {
       utf8_string_view_t segment = utf8_string_substring(&url->href, segment_start, url->href.len);
 
       // Whether the delimiter is one that separates two segments, and so already
-      // stands in for the solidus that a dot segment leaves behind.
+      // stands in for the slash that a dot segment leaves behind.
       bool separated = delimiter == 0x2f || (url__is_special(url) && delimiter == 0x5c);
 
       if (url__is_double_dot_path_segment(segment)) {
