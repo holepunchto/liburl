@@ -2,7 +2,7 @@
 #include "helpers.h"
 
 int
-main () {
+main() {
   // A code point may map to one that is ASCII, in which case the label needs no
   // Punycode encoding at all.
   test_parse(url, "https://ＡＢ.com", NULL);

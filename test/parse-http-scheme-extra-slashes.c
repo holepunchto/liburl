@@ -2,7 +2,7 @@
 #include "helpers.h"
 
 int
-main () {
+main() {
   // However many slashes stand between the scheme and the authority of a special
   // URL, they are all skipped, and so the host here is not empty.
   test_parse(url, "http:////example.com/foo/bar", NULL);

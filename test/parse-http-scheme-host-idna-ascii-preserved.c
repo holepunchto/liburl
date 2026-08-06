@@ -2,7 +2,7 @@
 #include "helpers.h"
 
 int
-main () {
+main() {
   // An ASCII domain is lowercased and left at that, for web compatibility, even
   // though xn--8i7caa decodes to "ｗｗｗ" whose code points are mapped
   // and would therefore fail the validity criteria.

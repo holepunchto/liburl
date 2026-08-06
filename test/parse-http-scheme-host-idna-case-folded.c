@@ -2,7 +2,7 @@
 #include "helpers.h"
 
 int
-main () {
+main() {
   // ASCII letters are folded to lowercase and so are their non-ASCII
   // counterparts, "Ä" (U+00C4) mapping to "ä" (U+00E4).
   test_parse(url, "https://FOOÄ.com", NULL);

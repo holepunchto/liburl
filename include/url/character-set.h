@@ -14,12 +14,12 @@
 typedef const uint8_t url_character_set_t[32];
 
 static inline bool
-url__is_in_character_set (url_character_set_t character_set, utf8_t character) {
+url__is_in_character_set(url_character_set_t character_set, utf8_t character) {
   return (character_set[character >> 3] & (1 << (character & 7))) != 0;
 }
 
 static inline bool
-url__contains_from_character_set (url_character_set_t character_set, utf8_string_view_t input) {
+url__contains_from_character_set(url_character_set_t character_set, utf8_string_view_t input) {
   size_t i = 0, n = input.len;
 
   uint8_t accumulator = 0;

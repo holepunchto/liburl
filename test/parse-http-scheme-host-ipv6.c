@@ -2,7 +2,7 @@
 #include "helpers.h"
 
 int
-main () {
+main() {
   test_parse(url, "http://[2001:0db8:0000:0000:0000:ff00:0042:8329]/foo/bar", NULL);
 
   test_get(url, href, "http://[2001:db8::ff00:42:8329]/foo/bar");

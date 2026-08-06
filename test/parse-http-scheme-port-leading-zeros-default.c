@@ -2,7 +2,7 @@
 #include "helpers.h"
 
 int
-main () {
+main() {
   // A port that is the default one for the scheme is left out, its leading zeros
   // making no difference to its value.
   test_parse(url, "http://example.com:00080/foo/bar", NULL);

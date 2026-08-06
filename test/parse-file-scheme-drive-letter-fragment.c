@@ -2,7 +2,7 @@
 #include "helpers.h"
 
 int
-main () {
+main() {
   // A drive letter in the host position becomes the first segment of the path,
   // with the fragment that follows it left where it is.
   test_parse(url, "file://c:#quux", NULL);

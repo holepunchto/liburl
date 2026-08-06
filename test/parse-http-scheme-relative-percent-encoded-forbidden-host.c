@@ -2,7 +2,7 @@
 #include "helpers.h"
 
 int
-main () {
+main() {
   test_parse(base, "http://example.com/foo/bar", NULL);
 
   url_t url;

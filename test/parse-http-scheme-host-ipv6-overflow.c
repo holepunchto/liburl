@@ -2,7 +2,7 @@
 #include "helpers.h"
 
 int
-main () {
+main() {
   test_parse(valid, "http://[1:2:3:4:5:6:7::]/", NULL);
 
   test_get(valid, href, "http://[1:2:3:4:5:6:7:0]/");

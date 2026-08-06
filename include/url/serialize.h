@@ -27,7 +27,7 @@ static const utf8_t url__hex_digits[16] = "0123456789abcdef";
 
 // https://url.spec.whatwg.org/#url-serializing
 static inline int
-url__serialize_port (uint16_t port, utf8_string_t *result) {
+url__serialize_port(uint16_t port, utf8_string_t *result) {
   utf8_t buffer[URL__PORT_MAX_LEN];
 
   size_t len = 0;
@@ -44,7 +44,7 @@ url__serialize_port (uint16_t port, utf8_string_t *result) {
 
 // https://url.spec.whatwg.org/#concept-ipv4-serializer
 static inline int
-url__serialize_ipv4 (uint32_t address, utf8_string_t *result) {
+url__serialize_ipv4(uint32_t address, utf8_string_t *result) {
   utf8_t buffer[URL__IPV4_MAX_LEN];
 
   size_t len = 0;
@@ -65,7 +65,7 @@ url__serialize_ipv4 (uint32_t address, utf8_string_t *result) {
 
 // https://url.spec.whatwg.org/#concept-ipv6-serializer
 static inline int
-url__serialize_ipv6 (uint16_t address[8], utf8_string_t *result) {
+url__serialize_ipv6(uint16_t address[8], utf8_string_t *result) {
   uint8_t compress_length = 0;
   uint8_t compress = 8;
 

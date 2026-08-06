@@ -2,7 +2,7 @@
 #include "helpers.h"
 
 int
-main () {
+main() {
   // A double dot segment may not shorten the path past a drive letter, which is
   // the only segment there is to shorten here.
   test_parse(url, "file://c:/..", NULL);

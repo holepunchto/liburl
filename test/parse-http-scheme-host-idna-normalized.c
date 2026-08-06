@@ -2,7 +2,7 @@
 #include "helpers.h"
 
 int
-main () {
+main() {
   // The domain is normalized to Unicode Normalization Form C, composing the
   // "A" and the combining grave accent (U+0300) into "à" (U+00E0).
   test_parse(url, "https://A\xcc\x80.com", NULL);

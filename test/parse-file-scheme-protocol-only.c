@@ -2,7 +2,7 @@
 #include "helpers.h"
 
 int
-main () {
+main() {
   test_parse(url, "file:", NULL);
 
   test_get(url, href, "file:///");

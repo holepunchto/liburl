@@ -2,7 +2,7 @@
 #include "helpers.h"
 
 int
-main () {
+main() {
   test_parse(valid, "http://example.com:65535/", NULL);
 
   test_get(valid, port, "65535");

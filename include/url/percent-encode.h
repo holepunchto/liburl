@@ -71,7 +71,7 @@ static const uint8_t url__hex_decoded[256] = {
 };
 
 static inline int
-url__percent_encode_character (utf8_t character, url_character_set_t percent_encode_set, utf8_string_t *result) {
+url__percent_encode_character(utf8_t character, url_character_set_t percent_encode_set, utf8_string_t *result) {
   int err;
 
   if (url__is_in_character_set(percent_encode_set, character)) {
@@ -84,7 +84,7 @@ url__percent_encode_character (utf8_t character, url_character_set_t percent_enc
 }
 
 static inline int
-url__percent_encode_string (const utf8_string_view_t view, url_character_set_t percent_encode_set, utf8_string_t *result) {
+url__percent_encode_string(const utf8_string_view_t view, url_character_set_t percent_encode_set, utf8_string_t *result) {
   int err;
 
   size_t i = 0;
@@ -112,12 +112,12 @@ url__percent_encode_string (const utf8_string_view_t view, url_character_set_t p
 }
 
 static inline int
-url__percent_decode_character (const utf8_t *character, utf8_string_t *result) {
+url__percent_decode_character(const utf8_t *character, utf8_string_t *result) {
   return utf8_string_append_character(result, url__hex_decoded[character[0]] * 0x10 + url__hex_decoded[character[1]]);
 }
 
 static inline int
-url__percent_decode_string (const utf8_string_view_t view, utf8_string_t *result) {
+url__percent_decode_string(const utf8_string_view_t view, utf8_string_t *result) {
   int err;
 
   size_t i = 0;

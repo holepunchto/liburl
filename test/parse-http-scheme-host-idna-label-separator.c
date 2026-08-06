@@ -2,7 +2,7 @@
 #include "helpers.h"
 
 int
-main () {
+main() {
   // The ideographic full stop (U+3002) maps to U+002E FULL STOP and so ends up
   // separating two labels.
   test_parse(url, "https://ex。ample.com", NULL);
