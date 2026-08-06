@@ -80,61 +80,61 @@ static url_character_set_t url__ascii_alphanumeric_character_set = {
 
 // https://infra.spec.whatwg.org/#ascii-digit
 static inline bool
-url__is_ascii_digit (utf8_t c) {
+url__is_ascii_digit(utf8_t c) {
   return c >= 0x30 && c <= 0x39;
 }
 
 // https://infra.spec.whatwg.org/#ascii-upper-hex-digit
 static inline bool
-url__is_ascii_upper_hex_digit (utf8_t c) {
+url__is_ascii_upper_hex_digit(utf8_t c) {
   return url__is_ascii_digit(c) || (c >= 0x41 && c <= 0x46);
 }
 
 // https://infra.spec.whatwg.org/#ascii-lower-hex-digit
 static inline bool
-url__is_ascii_lower_hex_digit (utf8_t c) {
+url__is_ascii_lower_hex_digit(utf8_t c) {
   return url__is_ascii_digit(c) || (c >= 0x61 && c <= 0x66);
 }
 
 // https://infra.spec.whatwg.org/#ascii-hex-digit
 static inline bool
-url__is_ascii_hex_digit (utf8_t c) {
+url__is_ascii_hex_digit(utf8_t c) {
   return url__is_ascii_digit(c) || (c >= 0x41 && c <= 0x46) || (c >= 0x61 && c <= 0x66);
 }
 
 // https://infra.spec.whatwg.org/#ascii-upper-alpha
 static inline bool
-url__is_ascii_upper_alpha (utf8_t c) {
+url__is_ascii_upper_alpha(utf8_t c) {
   return c >= 0x41 && c <= 0x5a;
 }
 
 // https://infra.spec.whatwg.org/#ascii-lower-alpha
 static inline bool
-url__is_ascii_lower_alpha (utf8_t c) {
+url__is_ascii_lower_alpha(utf8_t c) {
   return c >= 0x61 && c <= 0x7a;
 }
 
 // https://infra.spec.whatwg.org/#ascii-alpha
 static inline bool
-url__is_ascii_alpha (utf8_t c) {
+url__is_ascii_alpha(utf8_t c) {
   return url__is_in_character_set(url__ascii_alpha_character_set, c);
 }
 
 // https://infra.spec.whatwg.org/#ascii-alphanumeric
 static inline bool
-url__is_ascii_alphanumeric (utf8_t c) {
+url__is_ascii_alphanumeric(utf8_t c) {
   return url__is_in_character_set(url__ascii_alphanumeric_character_set, c);
 }
 
 // https://infra.spec.whatwg.org/#ascii-lowercase
 static inline utf8_t
-url__to_ascii_lowercase (utf8_t c) {
+url__to_ascii_lowercase(utf8_t c) {
   return url__is_ascii_upper_alpha(c) ? c | 0x20 : c;
 }
 
 // https://infra.spec.whatwg.org/#ascii-uppercase
 static inline utf8_t
-url__to_ascii_uppercase (utf8_t c) {
+url__to_ascii_uppercase(utf8_t c) {
   return url__is_ascii_lower_alpha(c) ? c & ~0x20 : c;
 }
 

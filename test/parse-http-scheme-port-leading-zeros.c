@@ -2,7 +2,7 @@
 #include "helpers.h"
 
 int
-main () {
+main() {
   // The port is serialized from its value, and so without its leading zeros.
   test_parse(url, "http://example.com:0081/foo/bar", NULL);
 

@@ -2,7 +2,7 @@
 #include "helpers.h"
 
 int
-main () {
+main() {
   test_parse(url, "scheme://KEET.io", NULL);
 
   test_get(url, href, "scheme://KEET.io");

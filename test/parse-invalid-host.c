@@ -2,7 +2,7 @@
 #include "helpers.h"
 
 int
-main () {
+main() {
   // A host must not be empty if a port follows it, whether or not the URL is a
   // special one.
   test_parse_failure("http://:8080/foo", NULL);

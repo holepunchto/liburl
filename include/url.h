@@ -65,7 +65,7 @@ struct url_s {
 };
 
 inline void
-url_init (url_t *url) {
+url_init(url_t *url) {
   url->flags = 0;
   url->type = url_type_opaque;
 
@@ -82,59 +82,59 @@ url_init (url_t *url) {
 }
 
 inline void
-url_destroy (url_t *url) {
+url_destroy(url_t *url) {
   utf8_string_destroy(&url->href);
 }
 
 inline utf8_string_view_t
-url_get_href (const url_t *url) {
+url_get_href(const url_t *url) {
   return utf8_string_substring(&url->href, 0, url->href.len);
 }
 
 inline utf8_string_view_t
-url_get_scheme (const url_t *url) {
+url_get_scheme(const url_t *url) {
   return utf8_string_substring(&url->href, 0, url->components.scheme_end);
 }
 
 inline utf8_string_view_t
-url_get_username (const url_t *url) {
+url_get_username(const url_t *url) {
   return utf8_string_substring(&url->href, url->components.scheme_end + 3 /* :// */, url->components.username_end);
 }
 
 inline utf8_string_view_t
-url_get_password (const url_t *url) {
+url_get_password(const url_t *url) {
   return utf8_string_substring(&url->href, url->components.username_end + 1 /* : */, url->components.host_start - 1 /* @ */);
 }
 
 inline utf8_string_view_t
-url_get_host (const url_t *url) {
+url_get_host(const url_t *url) {
   return utf8_string_substring(&url->href, url->components.host_start, url->components.host_end);
 }
 
 inline utf8_string_view_t
-url_get_port (const url_t *url) {
+url_get_port(const url_t *url) {
   return utf8_string_substring(&url->href, url->components.host_end + 1 /* : */, url->components.path_start);
 }
 
 inline utf8_string_view_t
-url_get_path (const url_t *url) {
+url_get_path(const url_t *url) {
   return utf8_string_substring(&url->href, url->components.path_start, url->components.query_start - 1 /* ? */);
 }
 
 inline utf8_string_view_t
-url_get_query (const url_t *url) {
+url_get_query(const url_t *url) {
   return utf8_string_substring(&url->href, url->components.query_start, url->components.fragment_start - 1 /* # */);
 }
 
 inline utf8_string_view_t
-url_get_fragment (const url_t *url) {
+url_get_fragment(const url_t *url) {
   return utf8_string_substring(&url->href, url->components.fragment_start, url->href.len);
 }
 
 #include "url/parse.h"
 
 inline int
-url_parse (url_t *url, const utf8_t *input, size_t len, const url_t *base) {
+url_parse(url_t *url, const utf8_t *input, size_t len, const url_t *base) {
   if (len == (size_t) -1) len = strlen((char *) input);
 
   return url__parse(url, utf8_string_view_init(input, len), base);

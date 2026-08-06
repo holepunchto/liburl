@@ -2,7 +2,7 @@
 #include "helpers.h"
 
 int
-main () {
+main() {
   test_parse(url, "https://日本語.jp", NULL);
 
   test_get(url, href, "https://xn--wgv71a119e.jp/");

@@ -2,7 +2,7 @@
 #include "helpers.h"
 
 int
-main () {
+main() {
   test_parse(base, "file:///foo/bar", NULL);
 
   test_parse(url, "file:./baz", &base);

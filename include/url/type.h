@@ -7,7 +7,7 @@
 #include "../url.h"
 
 static inline url_type_t
-url__type (const utf8_string_view_t scheme) {
+url__type(const utf8_string_view_t scheme) {
   size_t len = scheme.len;
   const utf8_t *data = scheme.data;
 
@@ -37,7 +37,7 @@ url__type (const utf8_string_view_t scheme) {
 
 // https://url.spec.whatwg.org/#default-port
 static inline uint32_t
-url__default_port (url_type_t type) {
+url__default_port(url_type_t type) {
   switch (type) {
   case url_type_ftp:
     return 21;
@@ -54,7 +54,7 @@ url__default_port (url_type_t type) {
 
 // https://url.spec.whatwg.org/#is-special
 static inline bool
-url__is_special (const url_t *url) {
+url__is_special(const url_t *url) {
   return url->type != url_type_opaque;
 }
 

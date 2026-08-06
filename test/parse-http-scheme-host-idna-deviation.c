@@ -2,7 +2,7 @@
 #include "helpers.h"
 
 int
-main () {
+main() {
   // Nontransitional processing leaves the deviation code point "ß" (U+00DF)
   // unchanged rather than mapping it to "ss".
   test_parse(url, "https://faß.de", NULL);

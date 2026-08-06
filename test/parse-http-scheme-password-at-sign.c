@@ -2,7 +2,7 @@
 #include "helpers.h"
 
 int
-main () {
+main() {
   // Only the first colon of the userinfo separates the password from the username,
   // every later one being percent encoded, as is every commercial at but the last.
   test_parse(url, "http://foo:bar@baz:quux@example.com/corge", NULL);

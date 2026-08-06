@@ -210,19 +210,19 @@ static url_character_set_t url__scheme_character_set = {
 
 // https://url.spec.whatwg.org/#windows-drive-letter
 static inline bool
-url__is_windows_drive_letter (const utf8_string_view_t input) {
+url__is_windows_drive_letter(const utf8_string_view_t input) {
   return input.len == 2 && url__is_ascii_alpha(input.data[0]) && (input.data[1] == 0x3a || input.data[1] == 0x7c);
 }
 
 // https://url.spec.whatwg.org/#normalized-windows-drive-letter
 static inline bool
-url__is_normalized_windows_drive_letter (const utf8_string_view_t input) {
+url__is_normalized_windows_drive_letter(const utf8_string_view_t input) {
   return input.len == 2 && url__is_ascii_alpha(input.data[0]) && input.data[1] == 0x3a;
 }
 
 // https://url.spec.whatwg.org/#start-with-a-windows-drive-letter
 static inline bool
-url__starts_with_windows_drive_letter (const utf8_string_view_t input) {
+url__starts_with_windows_drive_letter(const utf8_string_view_t input) {
   return (
     input.len >= 2 &&
     url__is_normalized_windows_drive_letter(utf8_string_view_substring(input, 0, 2)) &&
@@ -232,7 +232,7 @@ url__starts_with_windows_drive_letter (const utf8_string_view_t input) {
 
 // https://url.spec.whatwg.org/#shorten-a-urls-path
 static inline void
-url__shorten_path (url_t *url) {
+url__shorten_path(url_t *url) {
   assert((url->flags & url_has_opaque_path) == 0);
 
   utf8_string_view_t path = url_get_path(url);
@@ -256,7 +256,7 @@ url__shorten_path (url_t *url) {
 
 // https://url.spec.whatwg.org/#single-dot-path-segment
 static inline bool
-url__is_single_dot_path_segment (const utf8_string_view_t path) {
+url__is_single_dot_path_segment(const utf8_string_view_t path) {
   size_t len = path.len;
   const utf8_t *data = path.data;
 
@@ -269,7 +269,7 @@ url__is_single_dot_path_segment (const utf8_string_view_t path) {
 
 // https://url.spec.whatwg.org/#double-dot-path-segment
 static inline bool
-url__is_double_dot_path_segment (const utf8_string_view_t path) {
+url__is_double_dot_path_segment(const utf8_string_view_t path) {
   size_t len = path.len;
   const utf8_t *data = path.data;
 
@@ -300,7 +300,7 @@ url__is_double_dot_path_segment (const utf8_string_view_t path) {
 
 // https://url.spec.whatwg.org/#ends-in-a-number-checker
 static inline bool
-url__ends_in_a_number (const utf8_string_view_t input) {
+url__ends_in_a_number(const utf8_string_view_t input) {
   size_t i = utf8_string_view_last_index_of_character(input, input.len - 1, '.');
 
   utf8_string_view_t last = utf8_string_view_substring(input, i + 1, input.len);
@@ -332,7 +332,7 @@ url__ends_in_a_number (const utf8_string_view_t input) {
 
 // https://url.spec.whatwg.org/#ipv4-number-parser
 static inline uint64_t
-url__parse_ipv4_number (utf8_string_view_t input) {
+url__parse_ipv4_number(utf8_string_view_t input) {
   if (utf8_string_view_empty(input)) goto err;
 
   uint8_t r = 10;
@@ -381,7 +381,7 @@ err:
 
 // https://url.spec.whatwg.org/#concept-ipv4-parser
 static inline int
-url__parse_ipv4 (utf8_string_view_t input, uint32_t *result) {
+url__parse_ipv4(utf8_string_view_t input, uint32_t *result) {
   uint32_t address = 0;
 
   uint8_t parts = 0;
@@ -430,7 +430,7 @@ err:
 
 // https://url.spec.whatwg.org/#concept-ipv6-parser
 static inline int
-url__parse_ipv6 (utf8_string_view_t input, utf8_string_t *result) {
+url__parse_ipv6(utf8_string_view_t input, utf8_string_t *result) {
   int err;
 
   if (utf8_string_view_empty(input)) goto err;
@@ -568,7 +568,7 @@ err:
 
 // https://url.spec.whatwg.org/#concept-opaque-host-parser
 static inline int
-url__parse_opaque_host (const utf8_string_view_t input, utf8_string_t *result) {
+url__parse_opaque_host(const utf8_string_view_t input, utf8_string_t *result) {
   if (url__contains_from_character_set(url__forbidden_host_character_set, input)) {
     return -1;
   }
@@ -584,7 +584,7 @@ url__parse_opaque_host (const utf8_string_view_t input, utf8_string_t *result) {
  * every other domain takes.
  */
 static inline int
-url__parse_domain (const utf8_string_view_t input, utf8_string_t *result) {
+url__parse_domain(const utf8_string_view_t input, utf8_string_t *result) {
   int err;
 
   utf8_string_t domain;
@@ -638,7 +638,7 @@ err:
 
 // https://url.spec.whatwg.org/#concept-host-parser
 static inline int
-url__parse_host (const utf8_string_view_t input, bool is_opaque, utf8_string_t *result) {
+url__parse_host(const utf8_string_view_t input, bool is_opaque, utf8_string_t *result) {
   int err;
 
   if (input.len > 0 && input.data[0] == 0x5b) {
@@ -704,7 +704,7 @@ url__parse_host (const utf8_string_view_t input, bool is_opaque, utf8_string_t *
 }
 
 static inline int
-url__parse (url_t *url, const utf8_string_view_t input, const url_t *base) {
+url__parse(url_t *url, const utf8_string_view_t input, const url_t *base) {
   int err;
 
   url_state_t state = url_state_scheme_start;

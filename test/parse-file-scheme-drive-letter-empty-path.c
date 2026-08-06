@@ -2,7 +2,7 @@
 #include "helpers.h"
 
 int
-main () {
+main() {
   // A drive letter in the host position is no host at all, but the first segment
   // of the path, even when nothing follows it.
   test_parse(url, "file://c:", NULL);

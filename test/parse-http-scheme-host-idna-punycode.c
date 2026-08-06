@@ -2,7 +2,7 @@
 #include "helpers.h"
 
 int
-main () {
+main() {
   // A domain that is already Punycode encoded is left as it is, the encoding
   // round-tripping through the decoding that validates it.
   test_parse(url, "https://xn--fa-hia.de", NULL);

@@ -2,7 +2,7 @@
 #include "helpers.h"
 
 int
-main () {
+main() {
   // The soft hyphen (U+00AD) is ignored, being dropped from the domain.
   test_parse(url, "https://ex­ample.com", NULL);
 

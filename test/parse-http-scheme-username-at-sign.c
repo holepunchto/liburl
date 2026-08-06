@@ -2,7 +2,7 @@
 #include "helpers.h"
 
 int
-main () {
+main() {
   // The host follows the last commercial at, every earlier one belonging to the
   // userinfo and so being percent encoded.
   test_parse(url, "http://foo@bar@example.com/baz", NULL);

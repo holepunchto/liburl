@@ -2,7 +2,7 @@
 #include "helpers.h"
 
 int
-main () {
+main() {
   // Only a colon outside the brackets separates a port, those within belonging to
   // the IPv6 address itself.
   test_parse(url, "http://[2001:db8::ff00:42:8329]:8080/foo/bar", NULL);
