@@ -161,11 +161,14 @@ url__percent_decode_string(const utf8_string_view_t view, utf8_string_t *result)
   for (; i < n; i++) {
     utf8_t c = view.data[i];
 
+    // Only two hexadecimal digits make an escape. Anything else leaves the percent
+    // sign as the code point it is, which a domain has no business holding and so
+    // is rejected further along.
     if (
       c == 0x25 &&
       i + 2 < n &&
-      url__is_ascii_alphanumeric(view.data[i + 1]) &&
-      url__is_ascii_alphanumeric(view.data[i + 2])
+      url__is_ascii_hex_digit(view.data[i + 1]) &&
+      url__is_ascii_hex_digit(view.data[i + 2])
     ) {
       err = url__percent_decode_character(&view.data[i + 1], result);
       if (err < 0) return err;

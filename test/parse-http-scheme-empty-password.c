@@ -1,0 +1,21 @@
+#include "../include/url.h"
+#include "helpers.h"
+
+int
+main() {
+  // A password that is empty is left out along with the colon that would separate
+  // it from the username, which is kept.
+  test_parse(url, "http://user:@example.com/foo/bar", NULL);
+
+  test_get(url, href, "http://user@example.com/foo/bar");
+  test_get(url, scheme, "http");
+  test_get(url, username, "user");
+  test_get(url, password, "");
+  test_get(url, host, "example.com");
+  test_get(url, port, "");
+  test_get(url, path, "/foo/bar");
+  test_get(url, query, "");
+  test_get(url, fragment, "");
+
+  url_destroy(&url);
+}
