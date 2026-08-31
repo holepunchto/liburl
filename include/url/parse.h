@@ -815,8 +815,10 @@ url__parse_host(const utf8_string_view_t input, bool is_opaque, utf8_string_t *r
   return 0;
 }
 
+// The parser proper, which runs on input that steps 1 and 2 of the basic URL
+// parser have already been applied to; see url__parse().
 static inline int
-url__parse(url_t *url, const utf8_string_view_t input, const url_t *base) {
+url__parse_stripped(url_t *url, const utf8_string_view_t input, const url_t *base) {
   int err;
 
   url_state_t state = url_state_scheme_start;
@@ -1777,6 +1779,67 @@ done:
 
 err:
   return -1;
+}
+
+// https://url.spec.whatwg.org/#concept-basic-url-parser
+//
+// Steps 1 and 2, which normalize the input before the parser proper sees it. No
+// state override is supported, so both always apply.
+static inline int
+url__parse(url_t *url, utf8_string_view_t input, const url_t *base) {
+  int err;
+
+  while (input.len > 0 && url__is_c0_control_or_space(input.data[0])) {
+    input.data++;
+    input.len--;
+  }
+
+  while (input.len > 0 && url__is_c0_control_or_space(input.data[input.len - 1])) {
+    input.len--;
+  }
+
+  // Removing tabs and newlines needs a copy of the input, so the far more common
+  // case of there being none is ruled out first.
+  if (!url__has_c0_control(input.data, input.len)) {
+    return url__parse_stripped(url, input, base);
+  }
+
+  size_t seen = 0;
+
+  while (seen < input.len && !url__is_ascii_tab_or_newline(input.data[seen])) {
+    seen++;
+  }
+
+  // A C0 control that is none of them, which is rarer still, leaves nothing to
+  // remove.
+  if (seen == input.len) return url__parse_stripped(url, input, base);
+
+  utf8_string_t stripped;
+  utf8_string_init(&stripped);
+
+  err = utf8_string_reserve(&stripped, input.len);
+
+  if (err < 0) {
+    utf8_string_destroy(&stripped);
+
+    return err;
+  }
+
+  memcpy(stripped.data, input.data, seen);
+
+  stripped.len = seen;
+
+  for (size_t n = input.len; seen < n; seen++) {
+    utf8_t c = input.data[seen];
+
+    if (!url__is_ascii_tab_or_newline(c)) stripped.data[stripped.len++] = c;
+  }
+
+  err = url__parse_stripped(url, utf8_string_view_init(stripped.data, stripped.len), base);
+
+  utf8_string_destroy(&stripped);
+
+  return err;
 }
 
 #endif // URL_PARSE_H
