@@ -1,4 +1,6 @@
 list(APPEND tests
+  parse-c0-control-or-space-trimmed
+  parse-tab-newline-removed
   parse-non-special-scheme-double-slash-path-idempotence
   parse-non-special-scheme-trailing-dot-segment-idempotence
   parse-custom-scheme-empty-credentials

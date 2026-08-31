@@ -84,4 +84,37 @@ url__to_ascii_lowercase(utf8_t c) {
   return url__is_ascii_upper_alpha(c) ? c | 0x20 : c;
 }
 
+// https://infra.spec.whatwg.org/#c0-control-or-space
+static inline bool
+url__is_c0_control_or_space(utf8_t c) {
+  return c <= 0x20;
+}
+
+// https://infra.spec.whatwg.org/#ascii-tab-or-newline
+static inline bool
+url__is_ascii_tab_or_newline(utf8_t c) {
+  return c == 0x09 || c == 0x0a || c == 0x0d;
+}
+
+// Whether any byte of `data` is a C0 control.
+//
+// Tab, newline and carriage return are all C0 controls, so a URL containing no
+// C0 control at all - which is nearly every URL - cannot contain any of them
+// and needs no closer inspection.
+//
+// The result is accumulated rather than returned as soon as a control is found,
+// which keeps the loop free of the branch that would stop it from vectorizing.
+// Ruling out a whole URL is the only case that matters, and that has to look at
+// every byte regardless.
+static inline bool
+url__has_c0_control(const utf8_t *data, size_t len) {
+  unsigned acc = 0;
+
+  for (size_t i = 0; i < len; i++) {
+    acc |= data[i] < 0x20;
+  }
+
+  return acc != 0;
+}
+
 #endif // URL_INFRA_H
