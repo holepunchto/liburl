@@ -88,8 +88,13 @@ install(FILES include/url.h DESTINATION include)
 install(DIRECTORY include/url DESTINATION include)
 
 if(PROJECT_IS_TOP_LEVEL)
+  set(BENCH OFF CACHE BOOL "Build the benchmarks")
+
   enable_testing()
 
-  add_subdirectory(bench)
+  if(BENCH)
+    add_subdirectory(bench)
+  endif()
+
   add_subdirectory(test)
 endif()
