@@ -8,13 +8,15 @@ project(url C)
 fetch_package("github:holepunchto/libutf")
 fetch_package("github:holepunchto/libidna")
 
+get_property(shared GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS)
+
 add_library(url OBJECT)
 
 set_target_properties(
   url
   PROPERTIES
   C_STANDARD 11
-  POSITION_INDEPENDENT_CODE ON
+  POSITION_INDEPENDENT_CODE ${shared}
 )
 
 target_sources(
@@ -39,22 +41,24 @@ target_include_directories(
     $<TARGET_PROPERTY:idna,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
-add_library(url_shared SHARED)
+if(shared)
+  add_library(url_shared SHARED)
 
-set_target_properties(
-  url_shared
-  PROPERTIES
-  OUTPUT_NAME url
-  WINDOWS_EXPORT_ALL_SYMBOLS ON
-)
+  set_target_properties(
+    url_shared
+    PROPERTIES
+    OUTPUT_NAME url
+    WINDOWS_EXPORT_ALL_SYMBOLS ON
+  )
 
-target_link_libraries(
-  url_shared
-  PUBLIC
-    url
-    utf_shared
-    idna_shared
-)
+  target_link_libraries(
+    url_shared
+    PUBLIC
+      url
+      utf_shared
+      idna_shared
+  )
+endif()
 
 add_library(url_static STATIC)
 
@@ -73,7 +77,11 @@ target_link_libraries(
     idna_static
 )
 
-install(TARGETS url_shared url_static)
+install(TARGETS url_static)
+
+if(shared)
+  install(TARGETS url_shared)
+endif()
 
 install(FILES include/url.h DESTINATION include)
 
