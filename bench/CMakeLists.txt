@@ -8,6 +8,6 @@ foreach(bench IN LISTS benches)
   target_link_libraries(
     ${bench}
     PRIVATE
-      url_static
+      url::static
   )
 endforeach()

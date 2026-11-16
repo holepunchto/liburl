@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "../../../include/url.h"
+#include <url.h>
 
 int
 LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
