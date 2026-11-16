@@ -1,20 +1,8 @@
-list(APPEND fuzzers
-  parse/absolute
-  parse/relative
+add_fuzz_executables(
+  parse/absolute.c
+  parse/relative.c
+  PREFIX fuzz_
+  DURATION 600
+  LINK
+    url::static
 )
-
-foreach(fuzzer IN LISTS fuzzers)
-  string(REPLACE "/" "_" name ${fuzzer})
-
-  add_fuzzer(
-    fuzz_${name}
-    ${fuzzer}.c
-    DURATION 600
-  )
-
-  target_link_libraries(
-    fuzz_${name}
-    PRIVATE
-      url_static
-  )
-endforeach()

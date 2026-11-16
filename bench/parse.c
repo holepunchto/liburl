@@ -1,7 +1,7 @@
-#include "../include/url.h"
+#include <url.h>
 
 int
-main () {
+main() {
   url_t url;
 
   for (size_t i = 0; i < 10000000; i++) {

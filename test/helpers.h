@@ -3,7 +3,7 @@
 #include <utf.h>
 #include <utf/string.h>
 
-#include "../include/url.h"
+#include <url.h>
 
 #define test_parse(url, input, base) \
   url_t url; \
