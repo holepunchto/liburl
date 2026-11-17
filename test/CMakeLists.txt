@@ -1,9 +1,3 @@
-if(TARGET url_shared)
-  set(library url::shared)
-else()
-  set(library url::static)
-endif()
-
 add_test_executables(
   parse-c0-control-or-space-trimmed.c
   parse-tab-newline-removed.c
@@ -132,7 +126,7 @@ add_test_executables(
   parse-invalid-host.c
   parse-invalid-port.c
   LINK
-    ${library}
+    url::<TYPE>
 )
 
 add_subdirectory(fuzz)
